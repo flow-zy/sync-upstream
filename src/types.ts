@@ -5,4 +5,5 @@ export interface SyncOptions {
   syncDirs: string[]
   commitMessage: string
   autoPush: boolean
+  forceOverwrite?: boolean
 }

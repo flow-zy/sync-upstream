@@ -8,11 +8,14 @@ A tool for synchronizing code with upstream repositories with incremental update
 - Git integration
 - Configurable ignore patterns
 - Conflict resolution
+- Network request retry mechanism with exponential backoff
+- Directory and file type change detection
+- Windows path compatibility
 
 ## Installation
 
 ```bash
-npm install -g sync-tool
+npm install -g sync-upstream
 ```
 
 ## Usage
@@ -39,6 +42,12 @@ module.exports = {
   ignorePatterns: ['node_modules', 'dist', '.git'],
   // Concurrency limit for parallel processing
   concurrencyLimit: 5,
+  // 可选：网络请求重试配置
+  retryConfig: {
+    maxRetries: 3,     // 最大重试次数
+    initialDelay: 2000, // 初始延迟时间(ms)
+    backoffFactor: 1.5  // 退避因子
+  }
 }
 ```
 
@@ -60,12 +69,41 @@ const syncer = new UpstreamSyncer({
   localBranch: 'main',
   ignorePatterns: ['node_modules', 'dist', '.git'],
   concurrencyLimit: 5,
+  // 可选：网络请求重试配置
+  retryConfig: {
+    maxRetries: 3,     // 最大重试次数
+    initialDelay: 2000, // 初始延迟时间(ms)
+    backoffFactor: 1.5  // 退避因子
+  }
 })
 
-syncer.run()
-  .then(() => console.log('Sync completed successfully'))
-  .catch(err => console.error('Sync failed:', err))
+// 使用async/await方式调用
+async function syncWithUpstream() {
+  try {
+    await syncer.run()
+    console.log('Sync completed successfully')
+  } catch (err) {
+    console.error('Sync failed:', err)
+  }
+}
+
+syncWithUpstream()
 ```
+
+### Configuration Options
+
+The `UpstreamSyncer` class accepts the following configuration options:
+
+- `localRepoPath`: Path to the local repository
+- `upstreamRepoUrl`: Upstream repository URL
+- `upstreamBranch`: Upstream branch to sync with
+- `localBranch`: Local branch to sync to
+- `ignorePatterns`: Patterns to ignore during sync
+- `concurrencyLimit`: Concurrency limit for parallel processing
+- `retryConfig`: Optional configuration for network request retries
+  - `maxRetries`: Maximum number of retry attempts (default: 3)
+  - `initialDelay`: Initial delay between retries in milliseconds (default: 2000)
+  - `backoffFactor`: Exponential backoff factor (default: 1.5)
 
 ## License
 
