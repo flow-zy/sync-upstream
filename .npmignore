@@ -1,0 +1,22 @@
+# 忽略所有TypeScript源文件
+*.ts
+!*.d.ts
+
+# 忽略开发环境文件
+node_modules/
+tmp/
+temp/
+
+# 忽略构建输出以外的目录
+src/
+!dist/
+
+# 忽略配置文件
+.eslintrc.js
+.prettierrc.js
+tsconfig.json
+
+# 忽略其他非必要文件
+.gitignore
+package-lock.json
+pnpm-lock.yaml

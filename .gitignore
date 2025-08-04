@@ -1,0 +1,25 @@
+# 临时目录
+.sync-temp
+
+# 配置文件
+.sync-toolrc.json
+.sync-toolrc
+sync-tool.config.json
+
+# 编译输出
+dist
+
+# 日志文件
+*.log
+
+# 依赖目录
+node_modules
+
+# IDE 配置
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
