@@ -1,6 +1,6 @@
 {
   "name": "sync-upstream",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1-alpha.1",
   "packageManager": "pnpm@10.12.4",
   "description": "A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.",
   "author": "Your Name",
