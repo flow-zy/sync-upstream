@@ -1,10 +1,10 @@
 {
   "name": "sync-upstream",
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.1-alpha.2",
   "packageManager": "pnpm@10.12.4",
   "description": "A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.",
   "author": "Your Name",
-  "license": "ISC",
+  "license": "MIT",
   "keywords": [
     "sync",
     "upstream",
@@ -38,11 +38,16 @@
     "release:alpha": "standard-version --prerelease=alpha"
   },
   "dependencies": {
-    "minimist": "^1.2.8"
+    "@iarna/toml": "^2.2.5",
+    "date-fns": "^4.1.0",
+    "js-yaml": "^4.1.0",
+    "minimist": "^1.2.8",
+    "toml": "^3.0.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.1.0",
     "@types/fs-extra": "^11.0.4",
+    "@types/js-yaml": "^4.0.9",
     "@types/micromatch": "^4.0.9",
     "@types/minimist": "^1.2.5",
     "@types/node": "^24.1.0",
