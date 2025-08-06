@@ -18,10 +18,12 @@ export async function getFileHash(filePath: string): Promise<string> {
 
     const buffer = await fs.readFile(filePath)
     return crypto.createHash('md5').update(buffer).digest('hex')
-  } catch (error: any) {
+  }
+  catch (error: any) {
     if (error.code === 'EISDIR') {
       console.error(`错误: 尝试读取目录 ${filePath} 作为文件`)
-    } else {
+    }
+    else {
       console.error(`计算文件 ${filePath} 哈希值时出错:`, error.message)
     }
     throw error // 重新抛出错误，确保上层能捕获
@@ -40,8 +42,8 @@ export async function getDirectoryHashes(
   shouldIgnore: (path: string, patterns: string[]) => boolean,
 ): Promise<Record<string, string>> {
   try {
-    const hashes: Record<string, string> = {};
-    
+    const hashes: Record<string, string> = {}
+
     // 检查路径是否是目录
     const stats = await fs.stat(dirPath)
     if (!stats.isDirectory()) {
@@ -74,32 +76,35 @@ export async function getDirectoryHashes(
               console.warn(`警告: 条目 ${entry.name} 不存在，跳过`)
               continue
             }
-            
+
             const entryStats = await fs.stat(entryPath)
             if (entryStats.isDirectory()) {
               console.warn(`警告: 条目 ${entry.name} 被识别为文件，但实际是目录，跳过`)
               continue
             }
-            
+
             if (!entryStats.isFile()) {
               console.warn(`警告: 条目 ${entry.name} 既不是文件也不是目录，跳过`)
               continue
             }
-            
+
             hashes[relativePath] = await getFileHash(entryPath)
-          } catch (statError: any) {
+          }
+          catch (statError: any) {
             console.error(`获取条目 ${entry.name} 状态时出错:`, statError.message)
             continue // 跳过此条目
           }
         }
-      } catch (error: any) {
+      }
+      catch (error: any) {
         console.error(`处理条目 ${entry.name} 时出错:`, error.message)
         // 继续处理其他条目，而不是中断整个过程
       }
     }
 
     return hashes
-  } catch (error: any) {
+  }
+  catch (error: any) {
     console.error(`计算目录 ${dirPath} 哈希值时出错:`, error.message)
     // 不再重新抛出错误，避免中断上层调用
     return {}

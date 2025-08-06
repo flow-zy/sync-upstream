@@ -46,6 +46,29 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
       initial: initialOptions.autoPush !== undefined ? initialOptions.autoPush : true,
     },
     {
+      type: 'number',
+      name: 'maxRetries',
+      message: '网络请求最大重试次数:',
+      initial: initialOptions.retryConfig?.maxRetries || 3,
+      min: 0,
+    },
+    {
+      type: 'number',
+      name: 'initialDelay',
+      message: '初始重试延迟时间(毫秒):',
+      initial: initialOptions.retryConfig?.initialDelay || 2000,
+      min: 100,
+    },
+    {
+      type: 'number',
+      name: 'backoffFactor',
+      message: '重试退避因子:',
+      initial: initialOptions.retryConfig?.backoffFactor || 1.5,
+      min: 1,
+      max: 5,
+      float: true,
+    },
+    {
       type: 'confirm',
       name: 'confirm',
       message: '确认开始同步?',
@@ -65,6 +88,11 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
     syncDirs: response.syncDirs,
     commitMessage: response.commitMessage,
     autoPush: response.autoPush,
+    retryConfig: {
+      maxRetries: response.maxRetries,
+      initialDelay: response.initialDelay,
+      backoffFactor: response.backoffFactor,
+    },
   }
 }
 
@@ -76,5 +104,8 @@ export function displaySummary(options: SyncOptions) {
   console.log(chalk.yellow(`  - 同步目录: ${options.syncDirs.join(', ')}`))
   console.log(chalk.magenta(`  - 提交消息: ${options.commitMessage}`))
   console.log(chalk.green(`  - 自动推送: ${options.autoPush ? '是' : '否'}`))
+  console.log(chalk.blue(`  - 最大重试次数: ${options.retryConfig?.maxRetries || 3}`))
+  console.log(chalk.blue(`  - 初始重试延迟: ${options.retryConfig?.initialDelay || 2000}ms`))
+  console.log(chalk.blue(`  - 重试退避因子: ${options.retryConfig?.backoffFactor || 1.5}`))
   console.log(chalk.bold.blue(`${'='.repeat(40)}\n`))
 }
