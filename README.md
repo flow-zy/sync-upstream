@@ -1,4 +1,4 @@
-# Sync Tool
+# Sync upstream
 
 A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.
 
@@ -8,9 +8,6 @@ A tool for synchronizing code with upstream repositories with incremental update
 - Git integration
 - Configurable ignore patterns
 - Conflict resolution
-- Network request retry mechanism with exponential backoff
-- Directory and file type change detection
-- Windows path compatibility
 
 ## Installation
 
@@ -125,9 +122,9 @@ module.exports = {
   concurrencyLimit: 5,
   // 可选：网络请求重试配置
   retryConfig: {
-    maxRetries: 3, // 最大重试次数
+    maxRetries: 3,     // 最大重试次数
     initialDelay: 2000, // 初始延迟时间(ms)
-    backoffFactor: 1.5 // 退避因子
+    backoffFactor: 1.5  // 退避因子
   }
 }
 ```
@@ -211,9 +208,9 @@ const syncer = new UpstreamSyncer({
   concurrencyLimit: 5,
   // 可选：网络请求重试配置
   retryConfig: {
-    maxRetries: 3, // 最大重试次数
+    maxRetries: 3,     // 最大重试次数
     initialDelay: 2000, // 初始延迟时间(ms)
-    backoffFactor: 1.5 // 退避因子
+    backoffFactor: 1.5  // 退避因子
   }
 })
 
@@ -222,8 +219,7 @@ async function syncWithUpstream() {
   try {
     await syncer.run()
     console.log('Sync completed successfully')
-  }
-  catch (err) {
+  } catch (err) {
     console.error('Sync failed:', err)
   }
 }
@@ -241,10 +237,6 @@ The `UpstreamSyncer` class accepts the following configuration options:
 - `localBranch`: Local branch to sync to
 - `ignorePatterns`: Patterns to ignore during sync
 - `concurrencyLimit`: Concurrency limit for parallel processing
-- `forceOverwrite`: Whether to force overwrite existing files (default: true)
-- `verbose`: Whether to enable verbose logging (default: false)
-- `silent`: Whether to enable silent mode (only error messages) (default: false)
-- `dryRun`: Whether to enable dry-run mode (no actual changes) (default: false)
 - `retryConfig`: Optional configuration for network request retries
   - `maxRetries`: Maximum number of retry attempts (default: 3)
   - `initialDelay`: Initial delay between retries in milliseconds (default: 2000)
