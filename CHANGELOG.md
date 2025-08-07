@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.1-beta.2](https://gitee.com/overflow_z/sync-upstream/compare/v0.0.1-alpha.2...v0.0.1-beta.2) (2025-08-07)
+
+
+### Features
+
+* 🎸 完善错误捕获与日志处理 ([0a80e9a](https://gitee.com/overflow_z/sync-upstream/commit/0a80e9af6b4471d5f4d04efb8e720d48ce10a5b4))
+* 增加重试机制 ([6b0e648](https://gitee.com/overflow_z/sync-upstream/commit/6b0e6480659a007e462c4508092f2cbb9a301e81))
+
 ### [0.0.1-beta.0](https://gitee.com/overflow_z/sync-upstream/compare/v0.0.1-alpha.2...v0.0.1-beta.0) (2025-08-07)
 
 
