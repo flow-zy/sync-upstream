@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import prompts from 'prompts'
 
 export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}) {
-  console.log(chalk.bold.cyan('\n🔄 开源仓库目录同步工具\n'))
+  console.log(chalk.bold.cyan('\n🔄 仓库目录同步工具\n'))
 
   const response = await prompts([
     {

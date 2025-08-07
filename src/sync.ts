@@ -8,6 +8,7 @@ import pLimit from 'p-limit'
 import prompts from 'prompts'
 
 import simpleGit from 'simple-git'
+import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
@@ -53,6 +54,7 @@ export class UpstreamSyncer {
   private hashFile: string
   private concurrencyLimit = 5 // 并行处理的最大并发数
   private forceOverwrite: boolean
+  private conflictResolver: ConflictResolver
 
   constructor(private options: SyncOptions) {
     this.git = simpleGit({
@@ -66,6 +68,13 @@ export class UpstreamSyncer {
     this.hashFile = path.join(process.cwd(), '.sync-hashes.json')
     // 从选项中获取强制覆盖标志，如果没有提供则默认为true
     this.forceOverwrite = options.forceOverwrite !== undefined ? options.forceOverwrite : true
+
+    // 初始化冲突解决器
+    this.conflictResolver = new ConflictResolver(
+      options.conflictResolutionConfig || {
+        defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
+      },
+    )
 
     // 配置日志级别
     if (options.verbose) {
@@ -494,20 +503,44 @@ export class UpstreamSyncer {
           if (await fs.pathExists(sourcePath)) {
             logger.info(`-> 更新目录: ${chalk.yellow(dir)}`)
 
-            // 删除原目录
             const destPath = path.join(process.cwd(), dir)
+
+            // 检测冲突
             if (await fs.pathExists(destPath)) {
-              try {
-                await fs.remove(destPath)
-              }
-              catch (error) {
-                throw new FsError(`删除目录 ${destPath} 失败`, error as Error)
+              logger.info(`检测 ${dir} 目录中的冲突...`)
+              const ignorePatterns = await loadIgnorePatterns(process.cwd())
+              const conflicts = await this.conflictResolver.detectDirectoryConflicts(
+                sourcePath,
+                destPath,
+                ignorePatterns,
+              )
+
+              // 解决冲突
+              if (conflicts.length > 0) {
+                await this.conflictResolver.resolveConflicts(conflicts)
               }
             }
 
-            // 复制新内容
+            // 复制新内容（冲突已解决，现在可以安全地复制所有文件）
             try {
-              await fs.copy(sourcePath, destPath)
+              await fs.ensureDir(destPath)
+              // 使用fs-extra的copy方法，设置正确的选项
+              // 冲突已解决，所以我们可以覆盖所有文件
+              await fs.copy(sourcePath, destPath, {
+                overwrite: true, // 冲突已解决，可以覆盖文件
+                // 确保我们不会覆盖已解决的冲突文件
+                filter: async (src) => {
+                  const relativePath = path.relative(sourcePath, src)
+                  const targetFilePath = path.join(destPath, relativePath)
+                  // 检查目标文件是否存在
+                  if (await fs.pathExists(targetFilePath)) {
+                    // 对于已存在的文件，我们假设冲突已经解决，应该保留目标文件
+                    return false
+                  }
+                  // 对于不存在的文件，复制源文件
+                  return true
+                },
+              })
             }
             catch (error) {
               throw new FsError(`复制目录 ${sourcePath} 到 ${destPath} 失败`, error as Error)
