@@ -5,6 +5,10 @@
   "description": "A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.",
   "author": "Your Name",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flow-zy/sync-upstream.git"
+  },
   "keywords": [
     "sync",
     "upstream",
