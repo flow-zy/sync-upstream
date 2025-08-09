@@ -45,10 +45,6 @@ jobs:
       - name: 打包 🏗️
         run: pnpm run build
           
-      # 更新版本
-      - name: 更新版本 🔄
-        run: pnpm run release
-          
       # 发布前验证
       - name: 验证包 🧐
         run: pnpm pack
