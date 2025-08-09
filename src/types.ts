@@ -5,6 +5,36 @@ export interface RetryConfig {
 }
 
 /**
+ * 认证类型枚举
+ */
+export enum AuthType {
+  /** SSH 认证 */
+  SSH = 'ssh',
+  /** 用户名和密码认证 */
+  USER_PASS = 'user_pass',
+  /** 个人访问令牌认证 */
+  PAT = 'pat',
+}
+
+/**
+ * 认证配置接口
+ */
+export interface AuthConfig {
+  /** 认证类型 */
+  type: AuthType
+  /** 用户名，用于 USER_PASS 或 PAT 认证 */
+  username?: string
+  /** 密码，用于 USER_PASS 认证 */
+  password?: string
+  /** 个人访问令牌，用于 PAT 认证 */
+  token?: string
+  /** SSH 私钥路径，用于 SSH 认证 */
+  privateKeyPath?: string
+  /** SSH 私钥密码，如果私钥有密码保护 */
+  passphrase?: string
+}
+
+/**
  * 冲突类型枚举
  */
 export enum ConflictType {
@@ -56,4 +86,12 @@ export interface SyncOptions {
   retryConfig?: RetryConfig
   /** 冲突解决配置 */
   conflictResolutionConfig?: ConflictResolutionConfig
+  /** 要包含的文件类型列表（如 ['.ts', '.js', '.md']），为空则包含所有文件 */
+  includeFileTypes?: string[]
+  /** 同步预览功能，在实际同步前展示变更 */
+  previewOnly?: boolean
+  /** 并行处理的最大文件数量 */
+  concurrencyLimit?: number
+  /** 认证配置 */
+  authConfig?: AuthConfig
 }

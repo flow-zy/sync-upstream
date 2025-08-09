@@ -2,6 +2,8 @@
 
 A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.
 
+> **注意**：运行此工具前，确保当前目录已使用 Git 初始化。如果不是 Git 仓库，工具将退出并显示错误信息。
+
 ## Features
 - Incremental sync using file hashes
 - Parallel directory processing
@@ -21,7 +23,74 @@ npm install -g sync-upstream
 sync-upstream --config sync.config.js
 ```
 
+### 基本用法示例
+
+```bash
+# 使用配置文件
+sync-upstream --config ./path/to/sync.config.js
+
+# 直接通过命令行参数配置
+sync-upstream --upstreamRepo https://github.com/example/upstream.git --upstreamBranch main --companyBranch develop --syncDirs src,tests
+
+# 静默模式运行（只输出错误信息）
+sync-upstream --config sync.config.js --silent
+
+# 详细输出模式
+sync-upstream --config sync.config.js --verbose
+
+# 执行干运行（不实际修改文件）
+sync-upstream --config sync.config.js --dryRun
+```
+
+### 前置条件
+- 当前目录必须是已初始化的 Git 仓库
+- 已配置好上游仓库（可通过命令行参数或配置文件）
+- 确保有足够的权限访问上游仓库和本地仓库
+
 ## Configuration
+
+### 认证配置
+
+工具支持三种认证方式用于访问私有仓库：
+
+#### 认证类型
+
+```typescript
+import { AuthType } from 'sync-upstream'
+
+enum AuthType {
+  /** SSH 认证 */
+  SSH = 'ssh',
+  /** 用户名和密码认证 */
+  USER_PASS = 'user_pass',
+  /** 个人访问令牌认证 */
+  PAT = 'pat'
+}
+```
+
+#### 认证配置示例
+
+```typescript
+// SSH 认证配置
+const authConfig = {
+  type: AuthType.SSH,
+  privateKeyPath: '/path/to/your/private-key.pem',
+  passphrase: 'optional-passphrase' // 如果私钥有密码
+}
+
+// 用户名和密码认证配置
+const authConfig = {
+  type: AuthType.USER_PASS,
+  username: 'your-username',
+  password: 'your-password'
+}
+
+// 个人访问令牌认证配置
+const authConfig = {
+  type: AuthType.PAT,
+  token: 'your-personal-access-token'
+}
+```
 
 ### 冲突解决配置
 
@@ -56,6 +125,8 @@ export const conflictResolverConfig = {
 - `autoResolveTypes`: 自动解决冲突的文件类型列表，对于这些文件类型，即使策略设置为`PROMPT_USER`，也会使用默认策略。
 - `logResolutions`: 是否记录冲突解决日志，默认为`false`。
 - `ignorePaths`: 忽略的路径模式，支持通配符。
+- `concurrencyLimit`: 并行处理的最大文件数量，默认为5。
+- `authConfig`: 认证配置，用于访问私有仓库，详细信息见认证配置部分。
 
 ## 基本配置
 
@@ -84,6 +155,10 @@ export const conflictResolverConfig = {
     "maxRetries": 3,
     "initialDelay": 2000,
     "backoffFactor": 1.5
+  },
+  "authConfig": {
+    "type": "ssh",
+    "privateKeyPath": "/path/to/your/private-key.pem"
   },
   "forceOverwrite": true,
   "verbose": false,
@@ -191,6 +266,148 @@ module.exports = {
 ```bash
 # 指定配置文件路径
 --config <path> 或 -C <path>
+
+# 上游仓库URL
+--upstreamRepo <url>
+
+# 上游仓库分支
+--upstreamBranch <branch>
+
+# 公司仓库分支
+--companyBranch <branch>
+
+# 要同步的目录(用逗号分隔)
+--syncDirs <dir1,dir2,...>
+
+# 提交消息
+--commitMessage <message>
+
+# 是否自动推送到公司仓库
+--autoPush <true|false>
+
+# 最大重试次数
+--maxRetries <number>
+
+# 初始重试延迟时间(毫秒)
+--initialDelay <number>
+
+# 重试退避因子
+--backoffFactor <number>
+
+# 是否强制覆盖文件
+--forceOverwrite <true|false>
+
+# 是否输出详细日志
+--verbose <true|false>
+
+# 是否静默模式(只输出错误)
+--silent <true|false>
+
+# 是否执行干运行(不实际修改文件)
+--dryRun <true|false>
+
+# 并行处理的最大文件数量
+--concurrency <number> 或 -cl <number>
+
+# 认证类型 (ssh, user_pass, pat)
+--authType <type>
+
+# SSH 私钥路径
+--sshKeyPath <path>
+
+# SSH 私钥密码
+--sshPassphrase <passphrase>
+
+# 用户名 (用于 user_pass 认证)
+--username <username>
+
+# 密码 (用于 user_pass 认证)
+--password <password>
+
+# 个人访问令牌 (用于 pat 认证)
+--token <token>
+```
+
+## 故障排除
+
+### 常见问题
+
+1. **Git仓库未初始化**
+   - 错误信息: `Error: Not a git repository`
+   - 解决方法: 确保在运行工具前已使用`git init`初始化仓库，并配置了远程仓库。
+
+2. **无法访问上游仓库**
+   - 错误信息: `Error: Failed to fetch upstream repository`
+   - 解决方法: 检查网络连接，确保上游仓库URL正确，并且您有访问权限。
+
+3. **冲突解决失败**
+   - 错误信息: `Error: Conflict resolution failed`
+   - 解决方法: 手动解决冲突后重新运行工具，或修改冲突解决策略。
+
+4. **文件权限问题**
+   - 错误信息: `Error: Permission denied`
+   - 解决方法: 确保您对本地仓库目录有写入权限。
+
+### 日志查看
+
+工具会生成日志文件，默认位于`./sync-upstream.log`。您可以通过查看日志文件了解详细的错误信息和操作历史。
+
+```bash
+# 查看最新日志
+tail -f sync-upstream.log
+```
+
+## API文档
+
+### 核心类和方法
+
+#### UpstreamSyncer类
+
+```typescript
+import { UpstreamSyncer } from 'sync-upstream'
+
+// 创建实例
+const syncer = new UpstreamSyncer(options)
+
+// 执行同步
+await syncer.run()
+```
+
+#### 配置选项接口
+
+```typescript
+interface SyncOptions {
+  upstreamRepo: string;
+  upstreamBranch: string;
+  companyBranch: string;
+  syncDirs: string[];
+  commitMessage?: string;
+  autoPush?: boolean;
+  forceOverwrite?: boolean;
+  verbose?: boolean;
+  silent?: boolean;
+  dryRun?: boolean;
+  retryConfig?: RetryConfig;
+  conflictResolutionConfig?: ConflictResolutionConfig;
+  concurrencyLimit?: number;
+  authConfig?: AuthConfig;
+}
+
+interface AuthConfig {
+  type: AuthType;
+  privateKeyPath?: string;
+  passphrase?: string;
+  username?: string;
+  password?: string;
+  token?: string;
+}
+
+enum AuthType {
+  SSH = 'ssh',
+  USER_PASS = 'user_pass',
+  PAT = 'pat'
+}
+```
 
 # 指定配置文件格式 (json, yaml, toml)
 --config-format <format> 或 -F <format>

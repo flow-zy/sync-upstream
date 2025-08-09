@@ -1,9 +1,10 @@
-import type { SyncOptions } from './types'
 import path from 'node:path'
+import type { SyncOptions } from './types'
 import toml from '@iarna/toml'
 // src/config.ts
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
+import { ConflictResolutionStrategy } from './types'
 
 const DEFAULT_CONFIG: Partial<SyncOptions> = {
   upstreamBranch: 'main',
@@ -14,10 +15,15 @@ const DEFAULT_CONFIG: Partial<SyncOptions> = {
   verbose: false,
   silent: false,
   dryRun: false,
+  previewOnly: false,
+  concurrencyLimit: 5,
   retryConfig: {
     maxRetries: 3,
     initialDelay: 2000,
     backoffFactor: 1.5,
+  },
+  conflictResolutionConfig: {
+    defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
   },
 }
 
@@ -32,6 +38,37 @@ const CONFIG_FILES = [
   'sync-tool.config.yml',
   'sync-tool.config.toml',
 ]
+
+/**
+ * 验证配置是否有效
+ */
+function validateConfig(config: Partial<SyncOptions>): void {
+  // 验证冲突解决策略
+  if (config.conflictResolutionConfig?.defaultStrategy) {
+    const validStrategies = Object.values(ConflictResolutionStrategy)
+    if (!validStrategies.includes(config.conflictResolutionConfig.defaultStrategy)) {
+      throw new Error(`无效的冲突解决策略: ${config.conflictResolutionConfig.defaultStrategy}. 有效策略: ${validStrategies.join(', ')}`)
+    }
+  }
+
+  // 验证重试配置
+  if (config.retryConfig) {
+    if (config.retryConfig.maxRetries !== undefined && config.retryConfig.maxRetries < 0) {
+      throw new Error('最大重试次数不能为负数')
+    }
+    if (config.retryConfig.initialDelay !== undefined && config.retryConfig.initialDelay < 0) {
+      throw new Error('初始重试延迟不能为负数')
+    }
+    if (config.retryConfig.backoffFactor !== undefined && config.retryConfig.backoffFactor < 1) {
+      throw new Error('重试退避因子必须大于或等于1')
+    }
+  }
+
+  // 验证并行限制
+  if (config.concurrencyLimit !== undefined && config.concurrencyLimit < 1) {
+    throw new Error('并行处理数量必须大于或等于1')
+  }
+}
 
 /**
  * 查找并加载配置文件
@@ -60,6 +97,8 @@ export async function loadConfig(): Promise<Partial<SyncOptions>> {
           config = JSON.parse(fileContent)
         }
 
+        // 验证配置
+        validateConfig(config)
         return { ...DEFAULT_CONFIG, ...config }
       }
       catch (error) {

@@ -4,15 +4,28 @@ import type { SyncOptions } from './types'
 import chalk from 'chalk'
 import minimist from 'minimist'
 import pkg from '../package.json'
+import simpleGit from 'simple-git'
 import { loadConfig } from './config'
 import { promptForOptions } from './prompts'
 import { UpstreamSyncer } from './sync'
+import { GitError } from './errors'
+
+// 检查当前目录是否是Git仓库
+async function isGitRepository(): Promise<boolean> {
+  try {
+    const git = simpleGit()
+    await git.status()
+    return true
+  } catch (error) {
+    return false
+  }
+}
 
 // 解析命令行参数
 const args = minimist(process.argv.slice(2), {
   // 使用string类型并在后续代码中转换为数字
-  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff'],
-  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run'],
+  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
+  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only'],
   alias: {
     r: 'repo',
     b: 'branch',
@@ -26,11 +39,13 @@ const args = minimist(process.argv.slice(2), {
     V: 'verbose',
     s: 'silent',
     n: 'dry-run',
+    P: 'preview-only',
     C: 'config',
     F: 'config-format',
     rm: 'retry-max',
     rd: 'retry-delay',
     rb: 'retry-backoff',
+    cl: 'concurrency',
   },
   default: {
     'branch': 'master',
@@ -42,11 +57,13 @@ const args = minimist(process.argv.slice(2), {
     'verbose': false,
     'silent': false,
     'dry-run': false,
+    'preview-only': false,
     'config': '',
     'config-format': 'json',
     'retry-max': undefined,
     'retry-delay': undefined,
     'retry-backoff': undefined,
+    'concurrency': undefined,
   },
 })
 
@@ -71,11 +88,13 @@ if (args.help) {
   console.log('  -V, --verbose           显示详细日志信息')
   console.log('  -s, --silent            静默模式，不输出日志')
   console.log('  -n, --dry-run           试运行模式，不实际执行同步操作')
+  console.log('  -P, --preview-only      预览模式，只显示变更，不实际修改文件')
   console.log('  -C, --config <路径>     指定配置文件路径')
   console.log('  -F, --config-format <格式> 配置文件格式 (json, yaml, toml)')
   console.log('  --rm, --retry-max <次数>   网络请求最大重试次数 (默认: 3)')
   console.log('  --rd, --retry-delay <毫秒>  初始重试延迟时间 (默认: 2000)')
   console.log('  --rb, --retry-backoff <因子> 重试退避因子 (默认: 1.5)')
+  console.log('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)')
   console.log('  -v, --version           显示版本信息')
   console.log('  -h, --help              显示帮助信息\n')
   console.log('示例:')
@@ -84,8 +103,16 @@ if (args.help) {
   process.exit(0)
 }
 
-// 准备初始配置
-const initialOptions: Partial<SyncOptions> = {
+// 检查是否在Git仓库中
+async function run() {
+  const isGitRepo = await isGitRepository()
+  if (!isGitRepo) {
+    console.error(chalk.red('错误: 当前目录不是Git仓库。请在Git初始化后的目录中运行此工具。'))
+    process.exit(1)
+  }
+
+  // 准备初始配置
+  const initialOptions: Partial<SyncOptions> = {
   upstreamRepo: args.repo,
   upstreamBranch: args.branch,
   companyBranch: args['company-branch'],
@@ -96,6 +123,8 @@ const initialOptions: Partial<SyncOptions> = {
   verbose: args.verbose,
   silent: args.silent,
   dryRun: args['dry-run'],
+  previewOnly: args['preview-only'],
+  concurrencyLimit: args['concurrency'] ? parseInt(args['concurrency'], 10) : undefined,
   retryConfig: {
     maxRetries: args['retry-max'],
     initialDelay: args['retry-delay'],
@@ -110,9 +139,6 @@ let configOptions: Partial<SyncOptions> = {}
 const configPath = args.config ? args.config : null
 const configFormat = args['config-format'] as 'json' | 'yaml' | 'toml'
 
-// 运行同步
-;(async () => {
-  try {
     // 加载配置文件
     configOptions = await loadConfig()
 
@@ -149,6 +175,7 @@ const configFormat = args['config-format'] as 'json' | 'yaml' | 'toml'
       }
     }
 
+    try {
     const syncer = new UpstreamSyncer(options)
     await syncer.run()
   }
@@ -156,4 +183,7 @@ const configFormat = args['config-format'] as 'json' | 'yaml' | 'toml'
     console.error(chalk.red('发生错误:'), error)
     process.exit(1)
   }
-})()
+}
+
+// 运行主函数
+run()

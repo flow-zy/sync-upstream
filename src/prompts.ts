@@ -22,7 +22,7 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
     {
       type: 'text',
       name: 'companyBranch',
-      message: '公司仓库分支名称:',
+      message: '目标仓库分支名称:',
       initial: initialOptions.companyBranch || 'master',
     },
     {
@@ -42,7 +42,7 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
     {
       type: 'confirm',
       name: 'autoPush',
-      message: '是否自动推送到公司仓库?',
+      message: '是否自动推送到目标仓库?',
       initial: initialOptions.autoPush !== undefined ? initialOptions.autoPush : true,
     },
     {
@@ -69,6 +69,20 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
       float: true,
     },
     {
+      type: 'number',
+      name: 'concurrencyLimit',
+      message: '并行处理的最大文件数量:',
+      initial: initialOptions.concurrencyLimit || 5,
+      min: 1,
+      max: 20,
+    },
+    {
+      type: 'confirm',
+      name: 'previewOnly',
+      message: '是否启用预览模式? (只显示变更，不实际修改文件)',
+      initial: initialOptions.previewOnly !== undefined ? initialOptions.previewOnly : false,
+    },
+    {
       type: 'confirm',
       name: 'confirm',
       message: '确认开始同步?',
@@ -88,11 +102,13 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
     syncDirs: response.syncDirs,
     commitMessage: response.commitMessage,
     autoPush: response.autoPush,
+    previewOnly: response.previewOnly,
     retryConfig: {
       maxRetries: response.maxRetries,
       initialDelay: response.initialDelay,
       backoffFactor: response.backoffFactor,
     },
+    concurrencyLimit: response.concurrencyLimit,
   }
 }
 
@@ -104,6 +120,7 @@ export function displaySummary(options: SyncOptions) {
   console.log(chalk.yellow(`  - 同步目录: ${options.syncDirs.join(', ')}`))
   console.log(chalk.magenta(`  - 提交消息: ${options.commitMessage}`))
   console.log(chalk.green(`  - 自动推送: ${options.autoPush ? '是' : '否'}`))
+  console.log(chalk.yellow(`  - 预览模式: ${options.previewOnly ? '启用' : '禁用'}`))
   console.log(chalk.blue(`  - 最大重试次数: ${options.retryConfig?.maxRetries || 3}`))
   console.log(chalk.blue(`  - 初始重试延迟: ${options.retryConfig?.initialDelay || 2000}ms`))
   console.log(chalk.blue(`  - 重试退避因子: ${options.retryConfig?.backoffFactor || 1.5}`))
