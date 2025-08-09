@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.2](https://github.com/flow-zy/sync-upstream/compare/v0.0.1...v0.0.2) (2025-08-09)
+
 ### [0.0.1](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-beta.2...v0.0.1) (2025-08-08)
 
 ### [0.0.1-beta.2](https://gitee.com/overflow_z/sync-upstream/compare/v0.0.1-alpha.2...v0.0.1-beta.2) (2025-08-07)
@@ -38,6 +40,11 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
+- Added `concurrencyLimit` configuration option for parallel processing control
+- Added authentication support with three types: SSH, USER_PASS, and PAT
+- Added configuration validation logic
+- Added command line support for concurrency limit with `--concurrency`/`-cl`
+- Added interactive prompts for configuration
 - Initial project setup
 - Incremental sync using file hashes
 - Parallel directory processing
