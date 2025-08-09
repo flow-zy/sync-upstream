@@ -20,23 +20,41 @@ jobs:
         with:
           node-version: 18
           registry-url: 'https://registry.npmjs.org'
+      # 安装pnpm
+      - name: 安装pnpm 📦
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
       # 依赖缓存策略
-      - name: Npm缓存 📁
+      - name: pnpm缓存 📁
         id: cache-dependencies
         uses: actions/cache@v3
         with:
           path: |
             **/node_modules
-          key: ${{runner.OS}}-${{hashFiles('**/package-lock.json')}}
+            **/pnpm-lock.yaml
+          key: ${{runner.OS}}-${{hashFiles('**/pnpm-lock.yaml')}}
+          
       # 依赖下载
       - name: 安装依赖 📦
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
-        run: npm install
+        run: pnpm install
+          
       # 打包
       - name: 打包 🏗️
-        run: npm run build
+        run: pnpm run build
+          
+      # 更新版本
+      - name: 更新版本 🔄
+        run: pnpm run release
+          
+      # 发布前验证
+      - name: 验证包 🧐
+        run: pnpm pack
+          
       # 发布
       - name: 发布 🚀
-        run: npm publish
+        run: pnpm publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

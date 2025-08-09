@@ -20,13 +20,13 @@ module.exports = {
       type: 'json',
     },
     {
-      filename: 'package-lock.json',
-      type: 'json',
+      filename: 'pnpm-lock.yaml',
+      type: 'yaml',
     },
   ],
   // 配置CHANGELOG.md生成
-  commitUrlFormat: 'https://github.com/your-username/sync-tool/commit/{{hash}}',
-  compareUrlFormat: 'https://github.com/your-username/sync-tool/compare/{{previousTag}}...{{currentTag}}',
+  commitUrlFormat: 'https://github.com/flow-zy/sync-upstream/commit/{{hash}}',
+  compareUrlFormat: 'https://github.com/flow-zy/sync-upstream/compare/{{previousTag}}...{{currentTag}}',
   // 自定义更新日志标题
   header: 'CHANGELOG',
   // 是否在生成版本后自动提交
