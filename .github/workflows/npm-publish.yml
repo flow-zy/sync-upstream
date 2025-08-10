@@ -18,13 +18,13 @@ jobs:
       - name: Node环境版本 🗜️
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           registry-url: 'https://registry.npmjs.org'
       # 安装pnpm
       - name: 安装pnpm 📦
         uses: pnpm/action-setup@v2
         with:
-          version: 8
+          version: 9
           
       # 依赖缓存策略
       - name: pnpm缓存 📁
@@ -51,6 +51,6 @@ jobs:
           
       # 发布
       - name: 发布 🚀
-        run: pnpm publish
+        run: pnpm publish --access public --no-git-checks
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
