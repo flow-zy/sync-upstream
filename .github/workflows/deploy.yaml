@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [master]  
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -24,18 +24,25 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20    #node版本
+          node-version: 24
+          # 启用 pnpm
+          cache: pnpm
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10        # 指定你想要的 pnpm 版本
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build with VitePress
-        run: npm run docs:build   #根据package.json的scripts对象修改
+        run: pnpm docs:build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/.vitepress/dist   #构建输出目录
+          path: docs/.vitepress/dist
 
   deploy:
     environment:
