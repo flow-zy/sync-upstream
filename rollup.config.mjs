@@ -4,7 +4,6 @@ import resolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
 import del from 'rollup-plugin-delete'
 import progress from 'rollup-plugin-progress'
-import shebang from 'rollup-plugin-shebang'
 import { terser } from 'rollup-plugin-terser'
 
 export default {
