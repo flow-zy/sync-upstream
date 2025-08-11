@@ -41,7 +41,8 @@ describe('cli.ts', () => {
       try {
         const result = await isGitRepository()
         expect(result).toBe(true)
-      } finally {
+      }
+      finally {
         // 恢复原始工作目录
         process.chdir(originalCwd)
       }
@@ -55,7 +56,8 @@ describe('cli.ts', () => {
       try {
         const result = await isGitRepository()
         expect(result).toBe(false)
-      } finally {
+      }
+      finally {
         // 恢复原始工作目录
         process.chdir(originalCwd)
       }

@@ -1,7 +1,7 @@
 import type { ConsolaInstance } from 'consola'
 import path from 'node:path'
 import chalk from 'chalk'
-import consola from 'consola'
+import { consola } from 'consola'
 import { format } from 'date-fns'
 import fs from 'fs-extra'
 

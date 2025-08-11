@@ -28,54 +28,54 @@ export enum ErrorSeverity {
  * 自定义错误基类
  */
 export abstract class SyncError extends Error {
-  public readonly code: string;
-  public readonly originalError?: Error;
-  public readonly timestamp: Date;
-  public readonly severity: ErrorSeverity;
-  public readonly context?: Record<string, any>;
+  public readonly code: string
+  public readonly originalError?: Error
+  public readonly timestamp: Date
+  public readonly severity: ErrorSeverity
+  public readonly context?: Record<string, any>
 
   constructor(
     message: string,
     code: string,
     severity: ErrorSeverity = ErrorSeverity.ERROR,
     originalError?: Error,
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ) {
-    super(message);
-    this.code = code;
-    this.severity = severity;
-    this.originalError = originalError;
-    this.timestamp = new Date();
-    this.context = context;
-    this.name = this.constructor.name;
+    super(message)
+    this.code = code
+    this.severity = severity
+    this.originalError = originalError
+    this.timestamp = new Date()
+    this.context = context
+    this.name = this.constructor.name
 
     // 修复继承链
-    Object.setPrototypeOf(this, new.target.prototype);
+    Object.setPrototypeOf(this, new.target.prototype)
   }
 
   /**
    * 显示友好的错误信息
    */
   public display(): void {
-    const severityColor = this.getSeverityColor();
+    const severityColor = this.getSeverityColor()
     console.error(severityColor(`
-❌ ${this.name} (${this.code}):`));
-    console.error(severityColor(this.message));
+❌ ${this.name} (${this.code}):`))
+    console.error(severityColor(this.message))
 
     if (this.context) {
-      console.error(chalk.blue('错误上下文:'));
-      console.error(chalk.blue(JSON.stringify(this.context, null, 2)));
+      console.error(chalk.blue('错误上下文:'))
+      console.error(chalk.blue(JSON.stringify(this.context, null, 2)))
     }
 
     if (this.originalError) {
-      console.error(chalk.yellow('原始错误:'));
-      console.error(chalk.yellow(this.originalError.message));
+      console.error(chalk.yellow('原始错误:'))
+      console.error(chalk.yellow(this.originalError.message))
       // 记录完整错误栈到日志
-      logger.error(`原始错误栈: ${this.originalError.stack || '无'}`);
+      logger.error(`原始错误栈: ${this.originalError.stack || '无'}`)
     }
 
     // 记录错误到日志
-    this.logError();
+    this.logError()
   }
 
   /**
@@ -84,15 +84,15 @@ export abstract class SyncError extends Error {
   private getSeverityColor() {
     switch (this.severity) {
       case ErrorSeverity.INFO:
-        return chalk.blue;
+        return chalk.blue
       case ErrorSeverity.WARNING:
-        return chalk.yellow;
+        return chalk.yellow
       case ErrorSeverity.ERROR:
-        return chalk.red;
+        return chalk.red
       case ErrorSeverity.CRITICAL:
-        return chalk.bold.red;
+        return chalk.bold.red
       default:
-        return chalk.red;
+        return chalk.red
     }
   }
 
@@ -108,21 +108,21 @@ export abstract class SyncError extends Error {
       timestamp: this.timestamp.toISOString(),
       context: this.context,
       originalError: this.originalError?.message,
-    };
+    }
 
     switch (this.severity) {
       case ErrorSeverity.INFO:
-        logger.info(JSON.stringify(errorData));
-        break;
+        logger.info(JSON.stringify(errorData))
+        break
       case ErrorSeverity.WARNING:
-        logger.warn(JSON.stringify(errorData));
-        break;
+        logger.warn(JSON.stringify(errorData))
+        break
       case ErrorSeverity.ERROR:
-        logger.error(JSON.stringify(errorData));
-        break;
+        logger.error(JSON.stringify(errorData))
+        break
       case ErrorSeverity.CRITICAL:
-        logger.error(chalk.bold.red(JSON.stringify(errorData)));
-        break;
+        logger.error(chalk.bold.red(JSON.stringify(errorData)))
+        break
     }
   }
 }
@@ -231,19 +231,20 @@ export class ValidationError extends SyncError {
  */
 export function handleError(error: Error): void {
   if (error instanceof SyncError) {
-    error.display();
+    error.display()
 
     // 根据错误严重程度决定是否退出进程
     if (error.severity === ErrorSeverity.CRITICAL) {
-      logger.error('发生严重错误，程序将退出');
-      process.exit(1);
+      logger.error('发生严重错误，程序将退出')
+      process.exit(1)
     }
-  } else {
+  }
+  else {
     const unknownError = new SyncProcessError(
       '发生未知错误',
-      error
-    );
-    unknownError.display();
-    process.exit(1);
+      error,
+    )
+    unknownError.display()
+    process.exit(1)
   }
 }

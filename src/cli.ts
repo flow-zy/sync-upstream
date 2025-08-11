@@ -1,14 +1,11 @@
-#!/usr/bin/env node
-
 import type { SyncOptions } from './types'
 import chalk from 'chalk'
 import minimist from 'minimist'
-import pkg from '../package.json'
 import simpleGit from 'simple-git'
+import pkg from '../package.json'
 import { loadConfig } from './config'
 import { promptForOptions } from './prompts'
 import { UpstreamSyncer } from './sync'
-import { GitError } from './errors'
 
 // 检查当前目录是否是Git仓库
 async function isGitRepository(): Promise<boolean> {
@@ -16,7 +13,8 @@ async function isGitRepository(): Promise<boolean> {
     const git = simpleGit()
     await git.status()
     return true
-  } catch (error) {
+  }
+  catch (error) {
     return false
   }
 }
@@ -113,69 +111,69 @@ async function run() {
 
   // 准备初始配置
   const initialOptions: Partial<SyncOptions> = {
-  upstreamRepo: args.repo,
-  upstreamBranch: args.branch,
-  companyBranch: args['company-branch'],
-  syncDirs: args.dirs ? args.dirs.split(',').map((dir: string) => dir.trim()) : [],
-  commitMessage: args.message,
-  autoPush: args.push,
-  forceOverwrite: args.force,
-  verbose: args.verbose,
-  silent: args.silent,
-  dryRun: args['dry-run'],
-  previewOnly: args['preview-only'],
-  concurrencyLimit: args['concurrency'] ? parseInt(args['concurrency'], 10) : undefined,
-  retryConfig: {
-    maxRetries: args['retry-max'],
-    initialDelay: args['retry-delay'],
-    backoffFactor: args['retry-backoff'],
-  },
-}
+    upstreamRepo: args.repo,
+    upstreamBranch: args.branch,
+    companyBranch: args['company-branch'],
+    syncDirs: args.dirs ? args.dirs.split(',').map((dir: string) => dir.trim()) : [],
+    commitMessage: args.message,
+    autoPush: args.push,
+    forceOverwrite: args.force,
+    verbose: args.verbose,
+    silent: args.silent,
+    dryRun: args['dry-run'],
+    previewOnly: args['preview-only'],
+    concurrencyLimit: args.concurrency ? Number.parseInt(args.concurrency, 10) : undefined,
+    retryConfig: {
+      maxRetries: args['retry-max'],
+      initialDelay: args['retry-delay'],
+      backoffFactor: args['retry-backoff'],
+    },
+  }
 
-// 加载配置文件
-let configOptions: Partial<SyncOptions> = {}
+  // 加载配置文件
+  let configOptions: Partial<SyncOptions> = {}
 
-// 如果指定了配置文件路径，则使用该文件
-const configPath = args.config ? args.config : null
-const configFormat = args['config-format'] as 'json' | 'yaml' | 'toml'
+  // 如果指定了配置文件路径，则使用该文件
+  const configPath = args.config ? args.config : null
+  const configFormat = args['config-format'] as 'json' | 'yaml' | 'toml'
 
-    // 加载配置文件
-    configOptions = await loadConfig()
+  // 加载配置文件
+  configOptions = await loadConfig()
 
-    // 合并配置文件和命令行参数，命令行参数优先级更高
-    // 使用对象展开运算符，命令行参数会覆盖配置文件中的同名参数
-    const mergedOptions: Partial<SyncOptions> = {
-      ...configOptions,
-      ...initialOptions,
+  // 合并配置文件和命令行参数，命令行参数优先级更高
+  // 使用对象展开运算符，命令行参数会覆盖配置文件中的同名参数
+  const mergedOptions: Partial<SyncOptions> = {
+    ...configOptions,
+    ...initialOptions,
+  }
+
+  // 特别处理 syncDirs，如果命令行参数为空但配置文件有值，则使用配置文件的值
+  if (!mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0) {
+    mergedOptions.syncDirs = configOptions.syncDirs
+  }
+
+  // 如果缺少必要参数，启动交互式提示
+  let options: SyncOptions
+  if (
+    !mergedOptions.upstreamRepo
+    || !mergedOptions.syncDirs
+    || mergedOptions.syncDirs.length === 0
+  ) {
+    options = await promptForOptions(mergedOptions)
+  }
+  else {
+    // 使用合并后的参数
+    options = {
+      upstreamRepo: mergedOptions.upstreamRepo!,
+      upstreamBranch: mergedOptions.upstreamBranch || 'master',
+      companyBranch: mergedOptions.companyBranch || 'master',
+      syncDirs: mergedOptions.syncDirs!,
+      commitMessage: mergedOptions.commitMessage || 'Sync upstream changes',
+      autoPush: mergedOptions.autoPush || false,
     }
+  }
 
-    // 特别处理 syncDirs，如果命令行参数为空但配置文件有值，则使用配置文件的值
-    if (!mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0) {
-      mergedOptions.syncDirs = configOptions.syncDirs
-    }
-
-    // 如果缺少必要参数，启动交互式提示
-    let options: SyncOptions
-    if (
-      !mergedOptions.upstreamRepo
-      || !mergedOptions.syncDirs
-      || mergedOptions.syncDirs.length === 0
-    ) {
-      options = await promptForOptions(mergedOptions)
-    }
-    else {
-      // 使用合并后的参数
-      options = {
-        upstreamRepo: mergedOptions.upstreamRepo!,
-        upstreamBranch: mergedOptions.upstreamBranch || 'master',
-        companyBranch: mergedOptions.companyBranch || 'master',
-        syncDirs: mergedOptions.syncDirs!,
-        commitMessage: mergedOptions.commitMessage || 'Sync upstream changes',
-        autoPush: mergedOptions.autoPush || false,
-      }
-    }
-
-    try {
+  try {
     const syncer = new UpstreamSyncer(options)
     await syncer.run()
   }

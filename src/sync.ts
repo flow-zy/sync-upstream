@@ -1,22 +1,22 @@
 import type { SimpleGit, SimpleGitProgressEvent } from 'simple-git'
 import type { RetryConfig } from './retry'
-import type { SyncOptions, AuthConfig } from './types'
-import { AuthType } from './types'
+import type { SyncOptions } from './types'
 import path from 'node:path'
 import chalk from 'chalk'
 import fs from 'fs-extra'
 import pLimit from 'p-limit'
 import prompts from 'prompts'
-
 import simpleGit from 'simple-git'
+
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
 import { logger, LogLevel } from './logger'
-
 import { displaySummary } from './prompts'
+
 import { withRetry } from './retry'
+import { AuthType } from './types'
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
   private total: number
@@ -174,7 +174,8 @@ export class UpstreamSyncer {
           url.username = encodeURIComponent(authConfig.username)
           url.password = encodeURIComponent(authConfig.password)
           repoUrl = url.toString()
-        } else if (authConfig.type === AuthType.PAT && authConfig.token) {
+        }
+        else if (authConfig.type === AuthType.PAT && authConfig.token) {
           // 构建带个人访问令牌的 URL
           const url = new URL(repoUrl)
           url.username = 'git' // 对于 PAT，用户名可以是任意值，但通常使用 'git'
@@ -322,7 +323,7 @@ export class UpstreamSyncer {
                           }
                           // 都是目录且存在，不需要特殊处理
                         }
-                      })
+                      }),
                     )
                   }
 
@@ -339,10 +340,11 @@ export class UpstreamSyncer {
                   diffs.push(`+ ${path.join(dir, fileName)}`)
                 }
               }
-            } catch (error) {
+            }
+            catch (error) {
               throw new FsError(`比较目录 ${dir} 时出错`, error as Error)
             }
-          })
+          }),
         )
       }
 
@@ -363,10 +365,12 @@ export class UpstreamSyncer {
         if (!confirm) {
           throw new UserCancelError('用户取消了变更应用')
         }
-      } else {
+      }
+      else {
         logger.info(chalk.green('没有检测到变更'))
       }
-    } catch (error) {
+    }
+    catch (error) {
       if (error instanceof UserCancelError) {
         throw error
       }
@@ -523,7 +527,8 @@ export class UpstreamSyncer {
               )
             }),
           )
-        } else {
+        }
+        else {
           // 检查文件类型是否应该被包含
           if (!this.shouldIncludeFile(sourcePath)) {
             logger.debug(`  跳过文件(类型不匹配): ${relativePath}`)
@@ -632,7 +637,7 @@ export class UpstreamSyncer {
             // 应用变更（冲突已解决，现在可以安全地应用变更）
             try {
               await fs.ensureDir(destPath)
-              
+
               // 对于冲突已解决的文件，我们应该保留本地修改
               // 只复制不存在的文件或目录
               await fs.copy(sourcePath, destPath, {

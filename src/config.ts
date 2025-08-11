@@ -1,5 +1,5 @@
-import path from 'node:path'
 import type { SyncOptions } from './types'
+import path from 'node:path'
 import toml from '@iarna/toml'
 // src/config.ts
 import fs from 'fs-extra'

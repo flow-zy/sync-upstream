@@ -1,9 +1,9 @@
-# sync-upstream  
+# sync-upstream
 
 ---
 
 ## 1. 项目定位
-sync-upstream 是一款面向企业与开源团队的「上游代码生命周期管理」工具。  
+sync-upstream 是一款面向企业与开源团队的「上游代码生命周期管理」工具。
 一句话：**把开源仓库的更新，以增量、并行、可审计、可回滚的方式，安全地同步到你的私有分支**。
 > **注意**：运行此工具前，确保当前目录已使用 Git 初始化。如果不是 Git 仓库，工具将退出并显示错误信息。
 ---
@@ -45,18 +45,18 @@ sync-upstream
 ### 3.3 推荐单文件配置（sync.config.js）
 ```js
 module.exports = {
-  upstreamRepo:   'https://github.com/vuejs/vue.git',
+  upstreamRepo: 'https://github.com/vuejs/vue.git',
   upstreamBranch: 'main',
-  localBranch:    'company/main',
-  syncDirs:       ['src', 'packages'],
+  localBranch: 'company/main',
+  syncDirs: ['src', 'packages'],
   ignorePatterns: ['node_modules', 'dist', '*.log'],
-  authConfig:     { type: 'pat', token: process.env.GITHUB_TOKEN },
-  retryConfig:    { maxRetries: 3, initialDelay: 2000, backoffFactor: 1.5 },
+  authConfig: { type: 'pat', token: process.env.GITHUB_TOKEN },
+  retryConfig: { maxRetries: 3, initialDelay: 2000, backoffFactor: 1.5 },
   concurrencyLimit: 8,
   forceOverwrite: false,
   verbose: true,
   dryRun: false
-};
+}
 ```
 保存后执行：
 ```bash
@@ -92,17 +92,17 @@ sync-upstream --config sync.config.js
 
 ## 6. 路线图（Roadmap 2025）
 
-- **Q3**  
-  - Web Dashboard Beta（实时冲突热力图）  
-  - Policy-as-Code GA（Rego 规则引擎）  
+- **Q3**
+  - Web Dashboard Beta（实时冲突热力图）
+  - Policy-as-Code GA（Rego 规则引擎）
 
-- **Q4**  
-  - AI 冲突助手 GA（自动生成合并摘要）  
-  - SaaS 多租户上线  
+- **Q4**
+  - AI 冲突助手 GA（自动生成合并摘要）
+  - SaaS 多租户上线
 
-- **2026 H1**  
-  - 双向同步（自动向上游提 PR）  
-  - 本地缓存 CDN & 大文件分块续传  
+- **2026 H1**
+  - 双向同步（自动向上游提 PR）
+  - 本地缓存 CDN & 大文件分块续传
 
 ---
 
