@@ -24,14 +24,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           # 启用 pnpm
           cache: pnpm
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 10        # 指定你想要的 pnpm 版本
+          version: 8       # 指定你想要的 pnpm 版本
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
