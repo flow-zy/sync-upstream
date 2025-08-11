@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  base: '/sync-upstream/',
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
   ],
