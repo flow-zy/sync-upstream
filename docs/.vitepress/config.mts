@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   base: '/sync-upstream/',
   head: [
-    ['link', { rel: 'icon', href: '/favicon.ico' }],
+    ['link', { rel: 'icon', href: '/sync-upstream/favicon.ico' }],
   ],
   title: 'sync-upstream',
   description: '上游代码同步工具，支持增量更新与并行处理。',

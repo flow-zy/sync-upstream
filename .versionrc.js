@@ -1,4 +1,6 @@
 module.exports = {
+  // 设置 tag 前缀为 v
+  tagPrefix: 'v',
   // 配置提交消息格式
   types: [
     { type: 'feat', section: 'Features' },

@@ -4,6 +4,7 @@
   "description": "A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.",
   "author": "flow-zy",
   "license": "MIT",
+  "homepage": "https://flow-zy.github.io/sync-upstream/",
   "repository": {
     "type": "git",
     "url": "https://github.com/flow-zy/sync-upstream.git"
@@ -67,6 +68,12 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.4",
+    "@semantic-release/npm": "^12.0.2",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
@@ -84,6 +91,7 @@
     "rollup-plugin-progress": "^1.1.2",
     "rollup-plugin-shebang": "^0.1.5",
     "rollup-plugin-terser": "^7.0.2",
+    "semantic-release": "^24.2.7",
     "standard-version": "^9.5.0",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
