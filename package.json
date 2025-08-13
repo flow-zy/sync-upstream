@@ -1,6 +1,6 @@
 {
   "name": "sync-upstream",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "A tool for synchronizing code with upstream repositories with incremental updates and parallel processing.",
   "author": "flow-zy",
   "license": "MIT",
