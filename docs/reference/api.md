@@ -12,81 +12,28 @@ sync-upstream [options]
 
 ### 选项
 
-#### --config, -c
-
-- **类型**: `string`
-- **描述**: 指定配置文件路径。
-- **示例**: `--config=path/to/your/config.js`
-
-#### --upstreamRepo
-
-- **类型**: `string`
-- **描述**: 上游仓库地址。
-- **示例**: `--upstreamRepo=https://github.com/example/upstream-repo.git`
-
-#### --upstreamBranch
-
-- **类型**: `string`
-- **描述**: 上游分支名称。
-- **示例**: `--upstreamBranch=main`
-
-#### --targetBranch
-
-- **类型**: `string`
-- **描述**: 目标分支名称。
-- **示例**: `--targetBranch=master`
-
-#### --maxParallelFiles
-
-- **类型**: `number`
-- **描述**: 并行处理的最大文件数。
-- **示例**: `--maxParallelFiles=10`
-
-#### --maxRetries
-
-- **类型**: `number`
-- **描述**: 网络请求最大重试次数。
-- **示例**: `--maxRetries=5`
-
-#### --initialRetryDelay
-
-- **类型**: `number`
-- **描述**: 初始重试延迟（毫秒）。
-- **示例**: `--initialRetryDelay=3000`
-
-#### --retryDelayFactor
-
-- **类型**: `number`
-- **描述**: 重试延迟因子。
-- **示例**: `--retryDelayFactor=2`
-
-#### --previewMode
-
-- **类型**: `boolean`
-- **描述**: 是否启用预览模式。
-- **示例**: `--previewMode=false`
-
-#### --autoPush
-
-- **类型**: `boolean`
-- **描述**: 是否自动推送到目标仓库。
-- **示例**: `--autoPush=true`
-
-#### --conflictResolution
-
-- **类型**: `'ask' | 'ours' | 'theirs'`
-- **描述**: 冲突解决策略。
-- **示例**: `--conflictResolution=theirs`
-
-#### --version, -v
-
-- **描述**: 显示当前版本号。
-- **示例**: `--version`
-
-#### --help, -h
-
-- **描述**: 显示帮助信息。
-- **示例**: `--help`
+| 参数 | 别名 | 类型 | 示例值 | 说明 |
+|---|---|---|---|---|
+| `--repo` | `-r` | `<url>` | `https://github.com/vuejs/vue.git` | 上游仓库 URL |
+| `--dirs` | `-d` | `<目录>` | `src,packages` | 要同步的目录，多个目录用逗号分隔 |
+| `--branch` | `-b` | `<分支>` | `main` | 上游分支 (默认: main) |
+| `--company-branch` | `-c` | `<分支>` | `company/main` | 公司仓库分支 (默认: main) |
+| `--message` | `-m` | `<消息>` | `"Sync upstream changes"` | 提交消息 |
+| `--push` | `-p` | `boolean` | 无 | 自动推送变更 |
+| `--force` | `-f` | `boolean` | 无 | 强制覆盖本地文件，不使用增量复制 (默认: true) |
+| `--verbose` | `-V` | `boolean` | 无 | 显示详细日志信息 |
+| `--silent` | `-s` | `boolean` | 无 | 静默模式，不输出日志 |
+| `--dry-run` | `-n` | `boolean` | 无 | 试运行模式，不实际执行同步操作 |
+| `--preview-only` | `-P` | `boolean` | 无 | 预览模式，只显示变更，不实际修改文件 |
+| `--config` | `-C` | `<路径>` | `sync.config.js` | 指定配置文件路径 |
+| `--config-format` | `-F` | `<格式>` | `json` | 配置文件格式 (json, yaml, toml) |
+| `--retry-max` | `--rm` | `<次数>` | `5` | 网络请求最大重试次数 (默认: 3) |
+| `--retry-delay` | `--rd` | `<毫秒>` | `3000` | 初始重试延迟时间 (默认: 2000) |
+| `--retry-backoff` | `--rb` | `<因子>` | `2` | 重试退避因子 (默认: 1.5) |
+| `--concurrency` | `--cl` | `<数量>` | `10` | 并行处理的最大文件数量 (默认: 5) |
+| `--version` | `-v` | `boolean` | 无 | 显示版本信息 |
+| `--help` | `-h` | `boolean` | 无 | 显示帮助信息 |
+| `--non-interactive` | `-y` | `boolean` | 无 | 非交互式模式，跳过所有确认提示 |
 
 ## 编程API
 

@@ -4,59 +4,21 @@
 
 ## [Unreleased]
 
-### Features
-
-- Added `nonInteractive` mode with `-y/--non-interactive` flag to skip all prompts
-- Added `concurrencyLimit` configuration option for parallel processing control
-- Added authentication support with three types: SSH, USER_PASS, and PAT
-- Added configuration validation logic
-- Added command line support for concurrency limit with `--concurrency`/`-cl`
-- Added interactive prompts for configuration
-- Initial project setup
-- Incremental sync using file hashes
-- Parallel directory processing
-- Git integration
-- Configurable ignore patterns
+# [0.2.0](https://github.com/flow-zy/sync-upstream/compare/v0.1.0...v0.2.0) (2025-08-13)
 
 ### Bug Fixes
 
-- Fixed import error in cli.ts
-- Fixed package.json formatting issues
-
-### Documentation
-
-- Added README.md with usage instructions
-
-### Build System
-
-- Added TypeScript configuration
-- Added ESLint and Prettier configuration
-
-## [0.0.2](https://github.com/flow-zy/sync-upstream/compare/v0.0.1...v0.0.2) (2025-08-09)
-
-## [0.0.1](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-beta.2...v0.0.1) (2025-08-08)
-
-## [0.0.1-beta.2](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-alpha.2...v0.0.1-beta.2) (2025-08-07)
+* **cli:** 修复非交互式模式下的参数处理逻辑 ([8af409c](https://github.com/flow-zy/sync-upstream/commit/8af409cd7b216d8192ef6ef23a766df6b947d4c0))
 
 ### Features
 
-- 🎸 完善错误捕获与日志处理
-- 增加重试机制
+* 添加大文件处理和本地缓存功能 ([c4bab49](https://github.com/flow-zy/sync-upstream/commit/c4bab4938c6c93fc781fae7e2bc1a97c82bea9a3))
+* **types:** 为 SyncOptions 添加大文件和缓存相关配置 ([ad88378](https://github.com/flow-zy/sync-upstream/commit/ad88378f1ab47190178a23ea572d813b9a860ee2))
 
-## [0.0.1-beta.0](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-alpha.2...v0.0.1-beta.0) (2025-08-07)
-
-### Features
-
-- 🎸 完善错误捕获与日志处理
-
-## [0.0.1-alpha.2](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-alpha.1...v0.0.1-alpha.2) (2025-08-06)
-
-## [0.0.1-alpha.1](https://github.com/flow-zy/sync-upstream/compare/v0.0.1-alpha.0...v0.0.1-alpha.1) (2025-08-05)
+# [0.1.0](https://github.com/flow-zy/sync-upstream/compare/v0.0.2...v0.1.0) (2025-08-13)
 
 ### Features
 
-- 增加重试机制
-
-## 0.0.1-alpha.0 (2025-08-04)
-
-[Unreleased]: https://github.com/flow-zy/sync-upstream/compare/v0.0.2...HEAD
+* 添加并行处理、认证支持和预览模式功能 ([eeae672](https://github.com/flow-zy/sync-upstream/commit/eeae672bbc5fab069cffe237e64e1e9886a4b250))
+* 添加非交互式模式支持并迁移至tsup构建工具 ([863fa12](https://github.com/flow-zy/sync-upstream/commit/863fa12ef98e2b65be9d57e02e83c729ee387dd3))
+* **docs:** 添加完整的文档结构和内容 ([092207d](https://github.com/flow-zy/sync-upstream/commit/092207dc4a090efdccdafcd6c1a6b49e7a94eb36))
