@@ -1,10 +1,9 @@
 import type { ConsolaInstance } from 'consola'
 import path from 'node:path'
-import chalk from 'chalk'
 import { consola } from 'consola'
 import { format } from 'date-fns'
 import fs from 'fs-extra'
-
+import { blue, bold, cyan, gray, green, magenta, red, yellow } from 'picocolors'
 // 定义日志级别
 export enum LogLevel {
   DEBUG = 'debug',
@@ -83,7 +82,7 @@ export class Logger {
   // 调试日志
   debug(message: string): void {
     if (this.logLevels.indexOf(LogLevel.DEBUG) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.debug(chalk.blue(`[DEBUG] ${message}`))
+      this.consola.debug(blue(`[DEBUG] ${message}`))
       this.logToFile(LogLevel.DEBUG, message)
     }
   }
@@ -91,7 +90,7 @@ export class Logger {
   // 详细日志
   verbose(message: string): void {
     if (this.logLevels.indexOf(LogLevel.VERBOSE) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.log(chalk.grey(`[VERBOSE] ${message}`))
+      this.consola.log(gray(`[VERBOSE] ${message}`))
       this.logToFile(LogLevel.VERBOSE, message)
     }
   }
@@ -105,7 +104,7 @@ export class Logger {
   // 信息日志
   info(message: string): void {
     if (this.logLevels.indexOf(LogLevel.INFO) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.info(chalk.cyan(`[INFO] ${message}`))
+      this.consola.info(cyan(`[INFO] ${message}`))
       this.logToFile(LogLevel.INFO, message)
     }
   }
@@ -113,7 +112,7 @@ export class Logger {
   // 成功日志
   success(message: string): void {
     if (this.logLevels.indexOf(LogLevel.SUCCESS) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.success(chalk.green(`[SUCCESS] ${message}`))
+      this.consola.success(green(`[SUCCESS] ${message}`))
       this.logToFile(LogLevel.SUCCESS, message)
     }
   }
@@ -121,7 +120,7 @@ export class Logger {
   // 警告日志
   warn(message: string): void {
     if (this.logLevels.indexOf(LogLevel.WARN) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.warn(chalk.yellow(`[WARN] ${message}`))
+      this.consola.warn(yellow(`[WARN] ${message}`))
       this.logToFile(LogLevel.WARN, message)
     }
   }
@@ -130,7 +129,7 @@ export class Logger {
   error(message: string, error?: Error): void {
     if (this.logLevels.indexOf(LogLevel.ERROR) >= this.logLevels.indexOf(this.config.level)) {
       const errorMessage = error ? `${message}: ${error.message}` : message
-      this.consola.error(chalk.red(`[ERROR] ${errorMessage}`))
+      this.consola.error(red(`[ERROR] ${errorMessage}`))
       this.logToFile(LogLevel.ERROR, errorMessage)
 
       // 如果有错误堆栈，也记录下来
@@ -142,8 +141,8 @@ export class Logger {
 
   // 步骤日志（用于显示同步过程中的主要步骤）
   step(stepNumber: number, message: string): void {
-    const formattedMessage = chalk.bold.magenta(`
-${stepNumber}. ${message}`)
+    const formattedMessage = bold(magenta(`
+${stepNumber}. ${message}`))
     this.consola.log(formattedMessage)
     this.logToFile(LogLevel.INFO, `Step ${stepNumber}: ${message}`)
   }

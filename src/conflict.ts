@@ -1,6 +1,6 @@
 import path from 'node:path'
-import chalk from 'chalk'
 import fs from 'fs-extra'
+import { yellow } from 'picocolors'
 import prompts from 'prompts'
 import { FsError } from './errors'
 import { getFileHash } from './hash'
@@ -252,12 +252,12 @@ export class ConflictResolver {
     switch (strategy) {
       case ConflictResolutionStrategy.USE_SOURCE:
         await fs.copyFile(conflict.sourcePath, conflict.targetPath)
-        logger.info(`冲突解决: 使用源文件覆盖目标文件 ${chalk.yellow(conflict.targetPath)}`)
+        logger.info(`冲突解决: 使用源文件覆盖目标文件 ${yellow(conflict.targetPath)}`)
         resolved = true
         break
 
       case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`冲突解决: 保留目标文件 ${chalk.yellow(conflict.targetPath)}`)
+        logger.info(`冲突解决: 保留目标文件 ${yellow(conflict.targetPath)}`)
         resolved = true
         break
 
@@ -274,7 +274,7 @@ ${sourceContent}
 ${targetContent}
 >>>>>>> TARGET`
           await fs.writeFile(conflict.targetPath, mergedContent)
-          logger.info(`冲突解决: 自动合并文件 ${chalk.yellow(conflict.targetPath)}`)
+          logger.info(`冲突解决: 自动合并文件 ${yellow(conflict.targetPath)}`)
           resolved = true
         }
         catch (error) {
@@ -286,7 +286,7 @@ ${targetContent}
       case ConflictResolutionStrategy.PROMPT_USER:
         // 如果是自动解决类型，则不提示用户，直接使用默认策略
         if (isAutoResolveType) {
-          logger.debug(`文件 ${chalk.yellow(conflict.targetPath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
+          logger.debug(`文件 ${yellow(conflict.targetPath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
           return this.resolveContentConflict(conflict, this.config.defaultStrategy)
         }
 
@@ -294,7 +294,7 @@ ${targetContent}
         const { resolution } = await prompts({
           type: 'select',
           name: 'resolution',
-          message: `文件 ${chalk.yellow(conflict.targetPath)} 存在内容冲突，如何解决?`,
+          message: `文件 ${yellow(conflict.targetPath)} 存在内容冲突，如何解决?`,
           choices: [
             { title: '使用源文件覆盖', value: ConflictResolutionStrategy.USE_SOURCE },
             { title: '保留目标文件', value: ConflictResolutionStrategy.KEEP_TARGET },
@@ -304,7 +304,7 @@ ${targetContent}
 
         if (resolution === 'edit') {
           // 在实际项目中，这里可以打开编辑器让用户手动合并
-          logger.info(`提示: 请手动编辑文件 ${chalk.yellow(conflict.targetPath)} 解决冲突`)
+          logger.info(`提示: 请手动编辑文件 ${yellow(conflict.targetPath)} 解决冲突`)
           return false
         }
         else {
@@ -355,19 +355,19 @@ ${targetContent}
         else {
           await fs.copyFile(conflict.sourcePath, conflict.targetPath)
         }
-        logger.info(`冲突解决: 使用源${conflict.sourceType}覆盖目标${conflict.targetType} ${chalk.yellow(conflict.targetPath)}`)
+        logger.info(`冲突解决: 使用源${conflict.sourceType}覆盖目标${conflict.targetType} ${yellow(conflict.targetPath)}`)
         resolved = true
         break
 
       case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`冲突解决: 保留目标${conflict.targetType} ${chalk.yellow(conflict.targetPath)}`)
+        logger.info(`冲突解决: 保留目标${conflict.targetType} ${yellow(conflict.targetPath)}`)
         resolved = true
         break
 
       case ConflictResolutionStrategy.PROMPT_USER:
         // 如果是自动解决类型，则不提示用户，直接使用默认策略
         if (isAutoResolveType) {
-          logger.debug(`路径 ${chalk.yellow(conflict.targetPath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
+          logger.debug(`路径 ${yellow(conflict.targetPath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
           return this.resolveTypeConflict(conflict, this.config.defaultStrategy)
         }
 
@@ -375,7 +375,7 @@ ${targetContent}
         const { resolution } = await prompts({
           type: 'select',
           name: 'resolution',
-          message: `路径 ${chalk.yellow(conflict.targetPath)} 存在类型冲突（源是${conflict.sourceType}，目标是${conflict.targetType}），如何解决?`,
+          message: `路径 ${yellow(conflict.targetPath)} 存在类型冲突（源是${conflict.sourceType}，目标是${conflict.targetType}），如何解决?`,
           choices: [
             { title: `使用源${conflict.sourceType}覆盖`, value: ConflictResolutionStrategy.USE_SOURCE },
             { title: `保留目标${conflict.targetType}`, value: ConflictResolutionStrategy.KEEP_TARGET },
@@ -430,7 +430,7 @@ ${targetContent}
           else {
             await fs.copyFile(conflict.sourcePath, conflict.targetPath)
           }
-          logger.info(`冲突解决: 使用源文件 ${chalk.yellow(conflict.sourcePath)} 覆盖目标路径 ${chalk.yellow(conflict.targetPath)}`)
+          logger.info(`冲突解决: 使用源文件 ${yellow(conflict.sourcePath)} 覆盖目标路径 ${yellow(conflict.targetPath)}`)
           resolved = true
         }
         else {
@@ -439,14 +439,14 @@ ${targetContent}
         break
 
       case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`冲突解决: 保留目标文件 ${chalk.yellow(conflict.targetPath)}`)
+        logger.info(`冲突解决: 保留目标文件 ${yellow(conflict.targetPath)}`)
         resolved = true
         break
 
       case ConflictResolutionStrategy.PROMPT_USER:
         // 如果是自动解决类型，则不提示用户，直接使用默认策略
         if (isAutoResolveType) {
-          logger.debug(`文件 ${chalk.yellow(conflict.sourcePath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
+          logger.debug(`文件 ${yellow(conflict.sourcePath)} 是自动解决类型，使用默认策略 ${this.config.defaultStrategy}`)
           return this.resolveRenameConflict(conflict, this.config.defaultStrategy)
         }
 
@@ -454,7 +454,7 @@ ${targetContent}
         const { resolution } = await prompts({
           type: 'select',
           name: 'resolution',
-          message: `检测到重命名冲突: ${chalk.yellow(conflict.sourcePath)} -> ${chalk.yellow(conflict.targetPath)}，如何解决?`,
+          message: `检测到重命名冲突: ${yellow(conflict.sourcePath)} -> ${yellow(conflict.targetPath)}，如何解决?`,
           choices: [
             { title: '使用源文件覆盖目标路径', value: ConflictResolutionStrategy.USE_SOURCE },
             { title: '保留目标文件', value: ConflictResolutionStrategy.KEEP_TARGET },
@@ -489,7 +489,7 @@ ${targetContent}
       return resolvedCount
     }
 
-    logger.warn(chalk.yellow(`检测到 ${conflicts.length} 个冲突`))
+    logger.warn(yellow(`检测到 ${conflicts.length} 个冲突`))
 
     for (const conflict of conflicts) {
       const resolved = await this.resolveConflict(conflict)

@@ -1,9 +1,29 @@
 import type { SyncOptions } from './types'
-import chalk from 'chalk'
+import { blue, bold, cyan, green, magenta, yellow } from 'picocolors'
 import prompts from 'prompts'
+// 确保prompts是函数
+if (typeof prompts !== 'function') {
+  console.error('Error: prompts is not a function')
+  process.exit(1)
+}
 
-export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}) {
-  console.log(chalk.bold.cyan('\n🔄 仓库目录同步工具\n'))
+export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}, nonInteractive: boolean = false) {
+  // 非交互式模式下直接返回初始选项
+  if (nonInteractive) {
+    return {
+      ...initialOptions,
+      confirm: true,
+      syncDirs: initialOptions.syncDirs || [],
+      retryConfig: initialOptions.retryConfig || {
+        maxRetries: 3,
+        initialDelay: 2000,
+        backoffFactor: 1.5
+      },
+      concurrencyLimit: initialOptions.concurrencyLimit || 5,
+    } as SyncOptions
+  }
+
+  console.log(bold(cyan('\n🔄 仓库目录同步工具\n')))
 
   const response = await prompts([
     {
@@ -12,7 +32,13 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
       message: '请输入上游仓库URL:',
       initial: initialOptions.upstreamRepo || '',
       validate: value => value.trim() ? true : '仓库URL不能为空',
-    },
+    }
+  }
+
+  // 交互式模式下显示提示
+  console.log(bold(cyan('\n🔄 仓库目录同步工具\n')))
+
+  const response = await prompts([,
     {
       type: 'text',
       name: 'upstreamBranch',
@@ -91,7 +117,7 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
   ])
 
   if (!response.confirm) {
-    console.log(chalk.yellow('操作已取消'))
+    console.log(yellow('操作已取消'))
     process.exit(0)
   }
 
@@ -113,16 +139,16 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
 }
 
 export function displaySummary(options: SyncOptions) {
-  console.log(chalk.bold.blue('\n🔍 配置摘要:'))
-  console.log(chalk.cyan(`  - 上游仓库: ${options.upstreamRepo}`))
-  console.log(chalk.cyan(`  - 上游分支: ${options.upstreamBranch}`))
-  console.log(chalk.cyan(`  - 公司分支: ${options.companyBranch}`))
-  console.log(chalk.yellow(`  - 同步目录: ${options.syncDirs.join(', ')}`))
-  console.log(chalk.magenta(`  - 提交消息: ${options.commitMessage}`))
-  console.log(chalk.green(`  - 自动推送: ${options.autoPush ? '是' : '否'}`))
-  console.log(chalk.yellow(`  - 预览模式: ${options.previewOnly ? '启用' : '禁用'}`))
-  console.log(chalk.blue(`  - 最大重试次数: ${options.retryConfig?.maxRetries || 3}`))
-  console.log(chalk.blue(`  - 初始重试延迟: ${options.retryConfig?.initialDelay || 2000}ms`))
-  console.log(chalk.blue(`  - 重试退避因子: ${options.retryConfig?.backoffFactor || 1.5}`))
-  console.log(chalk.bold.blue(`${'='.repeat(40)}\n`))
+  console.log(bold(blue('\n🔍 配置摘要:')))
+  console.log(cyan(`  - 上游仓库: ${options.upstreamRepo}`))
+  console.log(cyan(`  - 上游分支: ${options.upstreamBranch}`))
+  console.log(cyan(`  - 公司分支: ${options.companyBranch}`))
+  console.log(yellow(`  - 同步目录: ${options.syncDirs.join(', ')}`))
+  console.log(magenta(`  - 提交消息: ${options.commitMessage}`))
+  console.log(green(`  - 自动推送: ${options.autoPush ? '是' : '否'}`))
+  console.log(yellow(`  - 预览模式: ${options.previewOnly ? '启用' : '禁用'}`))
+  console.log(blue(`  - 最大重试次数: ${options.retryConfig?.maxRetries || 3}`))
+  console.log(blue(`  - 初始重试延迟: ${options.retryConfig?.initialDelay || 2000}ms`))
+  console.log(blue(`  - 重试退避因子: ${options.retryConfig?.backoffFactor || 1.5}`))
+  console.log(bold(blue(`${'='.repeat(40)}\n`)))
 }

@@ -1,4 +1,4 @@
-import chalk from 'chalk'
+import { blue, bold, red, yellow } from 'picocolors'
 import { logger } from './logger'
 
 // 错误类型枚举
@@ -63,13 +63,13 @@ export abstract class SyncError extends Error {
     console.error(severityColor(this.message))
 
     if (this.context) {
-      console.error(chalk.blue('错误上下文:'))
-      console.error(chalk.blue(JSON.stringify(this.context, null, 2)))
+      console.error(blue('错误上下文:'))
+      console.error(blue(JSON.stringify(this.context, null, 2)))
     }
 
     if (this.originalError) {
-      console.error(chalk.yellow('原始错误:'))
-      console.error(chalk.yellow(this.originalError.message))
+      console.error(yellow('原始错误:'))
+      console.error(yellow(this.originalError.message))
       // 记录完整错误栈到日志
       logger.error(`原始错误栈: ${this.originalError.stack || '无'}`)
     }
@@ -84,15 +84,15 @@ export abstract class SyncError extends Error {
   private getSeverityColor() {
     switch (this.severity) {
       case ErrorSeverity.INFO:
-        return chalk.blue
+        return blue
       case ErrorSeverity.WARNING:
-        return chalk.yellow
+        return yellow
       case ErrorSeverity.ERROR:
-        return chalk.red
+        return red
       case ErrorSeverity.CRITICAL:
-        return chalk.bold.red
+        return bold(red)
       default:
-        return chalk.red
+        return red
     }
   }
 
@@ -121,7 +121,7 @@ export abstract class SyncError extends Error {
         logger.error(JSON.stringify(errorData))
         break
       case ErrorSeverity.CRITICAL:
-        logger.error(chalk.bold.red(JSON.stringify(errorData)))
+        logger.error(bold(red)(JSON.stringify(errorData)))
         break
     }
   }

@@ -6,6 +6,7 @@
 
 ### Features
 
+- Added `nonInteractive` mode with `-y/--non-interactive` flag to skip all prompts
 - Added `concurrencyLimit` configuration option for parallel processing control
 - Added authentication support with three types: SSH, USER_PASS, and PAT
 - Added configuration validation logic

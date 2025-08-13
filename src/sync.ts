@@ -2,19 +2,19 @@ import type { SimpleGit, SimpleGitProgressEvent } from 'simple-git'
 import type { RetryConfig } from './retry'
 import type { SyncOptions } from './types'
 import path from 'node:path'
-import chalk from 'chalk'
 import fs from 'fs-extra'
 import pLimit from 'p-limit'
+import { blue, bold, cyan, green, magenta, yellow } from 'picocolors'
 import prompts from 'prompts'
-import simpleGit from 'simple-git'
 
+import simpleGit from 'simple-git'
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
 import { logger, LogLevel } from './logger'
-import { displaySummary } from './prompts'
 
+import { displaySummary } from './prompts'
 import { withRetry } from './retry'
 import { AuthType } from './types'
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
@@ -42,7 +42,7 @@ class SimpleProgressBar {
   }
 
   stop() {
-    console.log()
+    console.log('\n')
   }
 }
 
@@ -56,6 +56,7 @@ export class UpstreamSyncer {
   private concurrencyLimit: number
   private forceOverwrite: boolean
   private conflictResolver: ConflictResolver
+  private tempResourcesCreated: boolean = false
 
   constructor(private options: SyncOptions) {
     // 构建 Git 配置选项
@@ -141,7 +142,7 @@ export class UpstreamSyncer {
     if (event.method === 'checkout' || event.method === 'fetch') {
       if (!this.progressBar) {
         this.progressBar = new SimpleProgressBar({
-          format: `{bar} {percentage}% | ${chalk.cyan(event.method)}`,
+          format: `{bar} {percentage}% | ${cyan(event.method)}`,
         })
       }
 
@@ -164,6 +165,22 @@ export class UpstreamSyncer {
 
     try {
       let repoUrl = this.options.upstreamRepo
+
+      // 验证仓库URL格式
+      try {
+        // 对于SSH URL，我们需要特殊处理，因为URL构造函数不直接支持ssh://格式
+        if (repoUrl.startsWith('git@') || repoUrl.match(/^ssh:\/\//)) {
+          logger.info(`验证 SSH 仓库 URL: ${cyan(repoUrl)}`)
+        }
+        else {
+          // 尝试创建URL对象来验证HTTP/HTTPS URL格式
+          new URL(repoUrl)
+          logger.info(`验证仓库 URL: ${cyan(repoUrl)}`)
+        }
+      }
+      catch (error) {
+        throw new GitError('无效的仓库URL格式', error as Error)
+      }
 
       // 处理认证配置
       if (this.options.authConfig) {
@@ -193,7 +210,7 @@ export class UpstreamSyncer {
         await this.git.remote(['set-url', 'upstream', repoUrl])
       }
       else {
-        logger.info(`添加上游仓库: ${chalk.cyan(this.options.upstreamRepo)}`)
+        logger.info(`添加上游仓库: ${cyan(this.options.upstreamRepo)}`)
         await this.git.addRemote('upstream', repoUrl)
       }
       logger.success('上游仓库配置完成')
@@ -207,7 +224,7 @@ export class UpstreamSyncer {
    * 获取上游分支更新
    */
   private async fetchUpstream(): Promise<void> {
-    this.logStep(`获取上游分支 ${chalk.cyan(this.options.upstreamBranch)} 更新...`)
+    this.logStep(`获取上游分支 ${cyan(this.options.upstreamBranch)} 更新...`)
 
     const retryConfig: RetryConfig = {
       maxRetries: this.options.retryConfig?.maxRetries || 3,
@@ -229,10 +246,11 @@ export class UpstreamSyncer {
   }
 
   private async createTempBranch(): Promise<void> {
-    this.logStep(`创建临时分支: ${chalk.magenta(this.tempBranch)}`)
+    this.logStep(`创建临时分支: ${magenta(this.tempBranch)}`)
     try {
       await this.git.checkoutBranch(this.tempBranch, `upstream/${this.options.upstreamBranch}`)
-      logger.success(`临时分支 ${chalk.magenta(this.tempBranch)} 创建成功`)
+      logger.success(`临时分支 ${magenta(this.tempBranch)} 创建成功`)
+      this.tempResourcesCreated = true
     }
     catch (error) {
       throw new GitError('创建临时分支失败', error as Error)
@@ -352,22 +370,25 @@ export class UpstreamSyncer {
       await Promise.all(previewPromises)
 
       if (diffs.length > 0) {
-        logger.info(chalk.bold.yellow('将进行以下变更:'))
+        logger.info(bold(yellow('将进行以下变更:')))
         diffs.forEach(diff => logger.info(diff))
 
-        const { confirm } = await prompts({
-          type: 'confirm',
-          name: 'confirm',
-          message: '是否继续应用这些变更?',
-          initial: true,
-        })
+        // 非交互式模式下跳过确认
+        if (this.options.nonInteractive !== true) {
+          const { confirm } = await prompts({
+            type: 'confirm',
+            name: 'confirm',
+            message: '是否继续应用这些变更?',
+            initial: true,
+          })
 
-        if (!confirm) {
-          throw new UserCancelError('用户取消了变更应用')
+          if (!confirm) {
+            throw new UserCancelError('用户取消了变更应用')
+          }
         }
       }
       else {
-        logger.info(chalk.green('没有检测到变更'))
+        logger.info(green('没有检测到变更'))
       }
     }
     catch (error) {
@@ -384,6 +405,7 @@ export class UpstreamSyncer {
     try {
       await fs.ensureDir(this.tempDir)
       await fs.emptyDir(this.tempDir)
+      this.tempResourcesCreated = true
 
       // 加载忽略模式
       const ignorePatterns = await loadIgnorePatterns(process.cwd())
@@ -413,7 +435,7 @@ export class UpstreamSyncer {
 
         try {
           if (await fs.pathExists(sourcePath)) {
-            logger.info(`-> 处理目录: ${chalk.yellow(dir)}`)
+            logger.info(`-> 处理目录: ${yellow(dir)}`)
             const destPath = path.join(this.tempDir, path.basename(dir))
 
             // 使用并行处理复制目录
@@ -445,7 +467,7 @@ export class UpstreamSyncer {
             )
           }
           else {
-            logger.warn(`目录 ${chalk.yellow(dir)} 不存在，跳过`)
+            logger.warn(`目录 ${yellow(dir)} 不存在，跳过`)
           }
         }
         catch (error) {
@@ -614,7 +636,7 @@ export class UpstreamSyncer {
 
         try {
           if (await fs.pathExists(sourcePath)) {
-            logger.info(`-> 更新目录: ${chalk.yellow(dir)}`)
+            logger.info(`-> 更新目录: ${yellow(dir)}`)
 
             const destPath = path.join(process.cwd(), dir)
 
@@ -702,7 +724,7 @@ export class UpstreamSyncer {
         return false
       }
 
-      logger.info(`提交变更: ${chalk.green(this.options.commitMessage)}`)
+      logger.info(`提交变更: ${green(this.options.commitMessage)}`)
       await this.git.commit(this.options.commitMessage)
       logger.success('变更已提交')
       return true
@@ -718,7 +740,7 @@ export class UpstreamSyncer {
       return
     }
 
-    this.logStep(`推送变更到公司分支 ${chalk.cyan(this.options.companyBranch)}`)
+    this.logStep(`推送变更到公司分支 ${cyan(this.options.companyBranch)}`)
 
     const retryConfig: RetryConfig = {
       maxRetries: this.options.retryConfig?.maxRetries || 3,
@@ -740,6 +762,12 @@ export class UpstreamSyncer {
   }
 
   private async cleanup(): Promise<void> {
+    // 只有当临时资源已创建时才清理
+    if (!this.tempResourcesCreated) {
+      logger.info('未创建临时资源，跳过清理步骤')
+      return
+    }
+
     this.logStep('清理临时资源...')
 
     // 清理临时分支
@@ -778,21 +806,21 @@ export class UpstreamSyncer {
 
   public async run(): Promise<void> {
     try {
-      logger.info(chalk.bold.blue('╔════════════════════════════════════════════╗'))
-      logger.info(chalk.bold.blue('║      仓库目录同步工具                      ║'))
-      logger.info(chalk.bold.blue('╚════════════════════════════════════════════╝'))
+      logger.info(bold(blue('╔════════════════════════════════════════════╗')))
+      logger.info(bold(blue('║      仓库目录同步工具                      ║')))
+      logger.info(bold(blue('╚════════════════════════════════════════════╝')))
 
       // 显示配置摘要
       displaySummary(this.options)
 
       // 如果是dry-run模式，显示提示
       if (this.options.dryRun) {
-        logger.warn(chalk.yellow('⚠️ 运行在dry-run模式下，不会实际修改任何文件'))
+        logger.warn(yellow('⚠️ 运行在dry-run模式下，不会实际修改任何文件'))
       }
 
       // 如果是previewOnly模式，显示提示
       if (this.options.previewOnly) {
-        logger.warn(chalk.yellow('⚠️ 运行在预览模式下，只会显示变更，不会实际修改任何文件'))
+        logger.warn(yellow('⚠️ 运行在预览模式下，只会显示变更，不会实际修改任何文件'))
       }
 
       // 验证是否在Git仓库中
@@ -812,8 +840,8 @@ export class UpstreamSyncer {
 
       // 如果是previewOnly模式，在预览后结束
       if (this.options.previewOnly) {
-        logger.info(chalk.yellow('⚠️ 预览模式: 已完成变更预览，不进行实际修改'))
-        logger.success(chalk.bold.green(`\n✅ 同步预览完成!`))
+        logger.info(yellow('⚠️ 预览模式: 已完成变更预览，不进行实际修改'))
+        logger.success(bold(green(`\n✅ 同步预览完成!`)))
         return
       }
 
@@ -826,11 +854,11 @@ export class UpstreamSyncer {
         }
       }
       else {
-        logger.info(chalk.yellow('⚠️ dry-run模式: 跳过应用变更、提交和推送操作'))
+        logger.info(yellow('⚠️ dry-run模式: 跳过应用变更、提交和推送操作'))
       }
 
-      logger.success(chalk.bold.green('\n✅ 同步完成!'))
-      logger.info(chalk.green('='.repeat(50)))
+      logger.success(bold(green('\n✅ 同步完成!')))
+      logger.info(green('='.repeat(50)))
     }
     catch (error) {
       handleError(error as Error)
@@ -842,7 +870,7 @@ export class UpstreamSyncer {
           await this.cleanup()
         }
         else {
-          logger.info(chalk.yellow('⚠️ dry-run模式: 跳过清理临时资源'))
+          logger.info(yellow('⚠️ dry-run模式: 跳过清理临时资源'))
         }
       }
       catch (cleanupError) {

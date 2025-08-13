@@ -18,7 +18,7 @@
   ],
   "main": "dist/index.js",
   "bin": {
-    "sync-upstream": "dist/index.cjs"
+    "sync-upstream": "dist/cli.js"
   },
   "files": [
     "README.md",
@@ -28,28 +28,27 @@
   ],
   "scripts": {
     "lint": "eslint . --ext .ts,.js",
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",
     "test": "jest",
     "test:watch": "jest --watch",
     "coverage": "jest --coverage",
     "prepublishOnly": "pnpm run build",
-    "release": "standard-version",
-    "release:major": "standard-version --release-as major",
-    "release:minor": "standard-version --release-as minor",
-    "release:patch": "standard-version --release-as patch",
-    "release:prerelease": "standard-version --prerelease",
-    "release:beta": "standard-version --prerelease=beta",
-    "release:alpha": "standard-version --prerelease=alpha",
+    "release": "release-it",
+    "release:major": "release-it --release-as major",
+    "release:minor": "release-it --release-as minor",
+    "release:patch": "release-it --release-as patch",
+    "release:prerelease": "release-it --prerelease",
+    "release:beta": "release-it --prerelease=beta",
+    "release:alpha": "release-it --prerelease=alpha",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "chalk": "^5.5.0",
     "consola": "^3.4.2",
     "date-fns": "^4.1.0",
     "fs-extra": "^11.3.0",
@@ -57,6 +56,7 @@
     "micromatch": "^4.0.8",
     "minimist": "^1.2.8",
     "p-limit": "^6.2.0",
+    "picocolors": "^1.1.1",
     "prompts": "^2.4.2",
     "simple-git": "^3.28.0",
     "smol-toml": "^1.4.2",
@@ -96,6 +96,7 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vitepress": "^1.6.4"
   }

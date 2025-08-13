@@ -94,4 +94,6 @@ export interface SyncOptions {
   concurrencyLimit?: number
   /** 认证配置 */
   authConfig?: AuthConfig
+  /** 是否启用非交互式模式 */
+  nonInteractive?: boolean
 }

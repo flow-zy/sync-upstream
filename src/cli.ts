@@ -1,6 +1,7 @@
 import type { SyncOptions } from './types'
-import chalk from 'chalk'
 import minimist from 'minimist'
+
+import { bold, cyan, red } from 'picocolors'
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 import { loadConfig } from './config'
@@ -23,7 +24,7 @@ async function isGitRepository(): Promise<boolean> {
 const args = minimist(process.argv.slice(2), {
   // 使用string类型并在后续代码中转换为数字
   string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
-  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only'],
+  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive'],
   alias: {
     r: 'repo',
     b: 'branch',
@@ -44,6 +45,7 @@ const args = minimist(process.argv.slice(2), {
     rd: 'retry-delay',
     rb: 'retry-backoff',
     cl: 'concurrency',
+    y: 'non-interactive',
   },
   default: {
     'branch': 'master',
@@ -67,13 +69,13 @@ const args = minimist(process.argv.slice(2), {
 
 // 显示版本信息
 if (args.version) {
-  console.log(chalk.bold.cyan(`sync-upstream v${pkg.version}`))
+  console.log(bold(cyan(`sync-upstream v${pkg.version}`)))
   process.exit(0)
 }
 
 // 显示帮助信息
 if (args.help) {
-  console.log(chalk.bold.cyan('仓库目录 - 交互版\n'))
+  console.log(bold(cyan('仓库目录 - 交互版\n')))
   console.log('用法: sync-upstream [选项]\n')
   console.log('选项:')
   console.log('  -r, --repo <url>        上游仓库 URL')
@@ -94,7 +96,8 @@ if (args.help) {
   console.log('  --rb, --retry-backoff <因子> 重试退避因子 (默认: 1.5)')
   console.log('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)')
   console.log('  -v, --version           显示版本信息')
-  console.log('  -h, --help              显示帮助信息\n')
+  console.log('  -h, --help              显示帮助信息
+  -y, --non-interactive   非交互式模式，跳过所有确认提示\n')
   console.log('示例:')
   console.log('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')
   console.log('\n如果没有提供参数，将启动交互式向导')
@@ -105,7 +108,7 @@ if (args.help) {
 async function run() {
   const isGitRepo = await isGitRepository()
   if (!isGitRepo) {
-    console.error(chalk.red('错误: 当前目录不是Git仓库。请在Git初始化后的目录中运行此工具。'))
+    console.error(red('错误: 当前目录不是Git仓库。请在Git初始化后的目录中运行此工具。'))
     process.exit(1)
   }
 
@@ -152,14 +155,15 @@ async function run() {
     mergedOptions.syncDirs = configOptions.syncDirs
   }
 
-  // 如果缺少必要参数，启动交互式提示
+  // 检查是否启用非交互式模式
+  const nonInteractive = args['non-interactive'] || false
+
+  // 如果缺少必要参数且不是非交互式模式，启动交互式提示
   let options: SyncOptions
   if (
-    !mergedOptions.upstreamRepo
-    || !mergedOptions.syncDirs
-    || mergedOptions.syncDirs.length === 0
+    (!mergedOptions.upstreamRepo || !mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0) && !nonInteractive
   ) {
-    options = await promptForOptions(mergedOptions)
+    options = await promptForOptions(mergedOptions, nonInteractive)
   }
   else {
     // 使用合并后的参数
@@ -170,7 +174,20 @@ async function run() {
       syncDirs: mergedOptions.syncDirs!,
       commitMessage: mergedOptions.commitMessage || 'Sync upstream changes',
       autoPush: mergedOptions.autoPush || false,
-    }
+      forceOverwrite: mergedOptions.forceOverwrite !== undefined ? mergedOptions.forceOverwrite : true,
+      verbose: mergedOptions.verbose || false,
+      silent: mergedOptions.silent || false,
+      dryRun: mergedOptions.dryRun || false,
+      nonInteractive: nonInteractive,
+      previewOnly: mergedOptions.previewOnly || false,
+      concurrencyLimit: mergedOptions.concurrencyLimit !== undefined ? mergedOptions.concurrencyLimit : 5,
+      retryConfig: mergedOptions.retryConfig || {
+        maxRetries: 3,
+        initialDelay: 2000,
+        backoffFactor: 1.5
+      },
+      nonInteractive: nonInteractive
+    } as SyncOptions
   }
 
   try {
@@ -178,7 +195,7 @@ async function run() {
     await syncer.run()
   }
   catch (error) {
-    console.error(chalk.red('发生错误:'), error)
+    console.error(red('发生错误:'), error)
     process.exit(1)
   }
 }
