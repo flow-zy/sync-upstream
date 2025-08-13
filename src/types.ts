@@ -96,4 +96,16 @@ export interface SyncOptions {
   authConfig?: AuthConfig
   /** 是否启用非交互式模式 */
   nonInteractive?: boolean
+  /** 大文件阈值 (字节)，默认 100MB */
+  largeFileThreshold?: number
+  /** 是否使用 LFS/Git-Annex 处理大文件 */
+  useLFS?: boolean
+  /** 需要使用 LFS 跟踪的文件模式列表 */
+  lfsTrackPatterns?: string[]
+  /** 是否启用本地缓存 */
+  useCache?: boolean
+  /** 缓存目录路径 */
+  cacheDir?: string
+  /** 缓存过期时间 (天) */
+  cacheExpiryDays?: number
 }
