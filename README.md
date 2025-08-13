@@ -16,8 +16,8 @@ sync-upstream 是一款面向企业与开源团队的「上游代码生命周期
 | **认证安全** | SSH / PAT / GitHub App / OIDC | ✅ | 支持环境变量与 Vault 注入 |
 | **同步引擎** | 增量哈希 diff | ✅ | 仅同步变更文件，节省带宽 |
 |  | 并行文件处理 | ✅ | 自适应并发（CPU×2，上限 64） |
-|  | 大文件 LFS / Git-Annex | ⏳ | 分块续传，2 GB+ 二进制无压力 |
-|  | 本地缓存代理 | ⏳ | 内网缓存，带宽节省 80% |
+|  | 大文件 LFS / Git-Annex | ✅ | 分块续传，2 GB+ 二进制无压力 |
+|  | 本地缓存代理 | ✅ | 内网缓存，带宽节省 80% |
 | **冲突解决** | 策略引擎（文件级/目录级/语义级） | ✅ | YAML 声明式策略 |
 |  | AI 冲突摘要 | 🧪 | GPT-4 自动生成合并建议 |
 |  | 灰度发布 & 一键回滚 | ⏳ | dry-run → canary → full → revert |
@@ -47,7 +47,7 @@ sync-upstream
 module.exports = {
   upstreamRepo: 'https://github.com/vuejs/vue.git',
   upstreamBranch: 'main',
-  localBranch: 'company/main',
+  companyBranch: 'company/main',
   syncDirs: ['src', 'packages'],
   ignorePatterns: ['node_modules', 'dist', '*.log'],
   authConfig: { type: 'pat', token: process.env.GITHUB_TOKEN },
@@ -55,7 +55,15 @@ module.exports = {
   concurrencyLimit: 8,
   forceOverwrite: false,
   verbose: true,
-  dryRun: false
+  dryRun: false,
+  // LFS 配置
+  useLFS: true,
+  largeFileThreshold: 5 * 1024 * 1024, // 5MB
+  lfsTrackPatterns: ['*.zip', '*.tar.gz', '*.pdf', '*.jpg', '*.png'],
+  // 缓存配置
+  useCache: true,
+  cacheDir: './.sync-cache',
+  cacheExpiryDays: 7
 }
 ```
 保存后执行：
@@ -102,7 +110,11 @@ sync-upstream --config sync.config.js
 
 - **2026 H1**
   - 双向同步（自动向上游提 PR）
-  - 本地缓存 CDN & 大文件分块续传
+  - 企业级权限管理
+
+已完成功能：
+- 本地缓存代理
+- 大文件 LFS / Git-Annex 支持
 
 ---
 

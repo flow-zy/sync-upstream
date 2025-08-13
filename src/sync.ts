@@ -8,10 +8,12 @@ import { blue, bold, cyan, green, magenta, yellow } from 'picocolors'
 import prompts from 'prompts'
 
 import simpleGit from 'simple-git'
+import { initializeCache } from './cache'
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
+import { isLargeFile, readFileInChunks, writeFileInChunks } from './lfs'
 import { logger, LogLevel } from './logger'
 
 import { displaySummary } from './prompts'
@@ -521,6 +523,9 @@ export class UpstreamSyncer {
     try {
       await fs.ensureDir(destination)
 
+      // 初始化缓存
+      await initializeCache()
+
       const entries = await fs.readdir(source, { withFileTypes: true })
 
       // 设置并行处理限制
@@ -566,7 +571,20 @@ export class UpstreamSyncer {
 
                 // 只有当文件不存在或哈希值不同时才复制
                 if (!(await fs.pathExists(destPath)) || currentHash !== oldHash) {
-                  await fs.copyFile(sourcePath, destPath)
+                  // 检查是否为大文件
+                  if (await isLargeFile(sourcePath)) {
+                    logger.info(`  处理大文件: ${relativePath}`)
+                    // 使用分块方式复制大文件
+                    const chunks: { index: number, data: Buffer }[] = []
+                    await readFileInChunks(sourcePath, async (chunk, index) => {
+                      chunks.push({ index, data: chunk })
+                    })
+                    await writeFileInChunks(destPath, chunks)
+                  }
+                  else {
+                    // 普通文件复制
+                    await fs.copyFile(sourcePath, destPath)
+                  }
                   if (oldHash) {
                     logger.info(`  更新文件: ${relativePath}`)
                   }
@@ -798,6 +816,31 @@ export class UpstreamSyncer {
         await fs.remove(this.tempDir)
         logger.success('临时目录已删除')
       }
+    }
+    catch (error) {
+      logger.warn(`清理临时目录失败: ${error}`)
+    }
+
+    // 移除上游仓库
+    try {
+      const remotes = await this.git.getRemotes(true)
+      const upstreamExists = remotes.some(r => r.name === 'upstream')
+
+      if (upstreamExists) {
+        await this.git.removeRemote('upstream')
+        logger.success('上游仓库已移除')
+      }
+      else {
+        logger.info('没有找到上游仓库，跳过移除步骤')
+      }
+    }
+    catch (error) {
+      logger.warn(`移除上游仓库失败: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    // 清理临时目录
+    try {
+      await fs.remove(this.tempDir)
     }
     catch (error) {
       logger.warn(`清理临时目录失败: ${error}`)

@@ -18,20 +18,20 @@ module.exports = {
   // 目标分支
   targetBranch: 'master',
   // 同步目录，可以是父级目录或子级目录
-syncDirs: [
-  'src', // 同步整个src目录
-  'src/components', // 同步src/components子目录
-  'src/utils/**' // 使用通配符同步所有子目录
-],
-// 或者使用对象格式进行更复杂的映射
-// syncDirs: [
-//   {
-//     // 上游目录
-//     upstream: 'packages/core',
-//     // 目标目录
-//     target: 'packages/core'
-//   }
-// ],
+  syncDirs: [
+    'src', // 同步整个src目录
+    'src/components', // 同步src/components子目录
+    'src/utils/**' // 使用通配符同步所有子目录
+  ],
+  // 或者使用对象格式进行更复杂的映射
+  // syncDirs: [
+  //   {
+  //     // 上游目录
+  //     upstream: 'packages/core',
+  //     // 目标目录
+  //     target: 'packages/core'
+  //   }
+  // ],
   // 并行处理的最大文件数
   maxParallelFiles: 5,
   // 网络请求最大重试次数
