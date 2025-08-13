@@ -96,8 +96,8 @@ if (args.help) {
   console.log('  --rb, --retry-backoff <因子> 重试退避因子 (默认: 1.5)')
   console.log('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)')
   console.log('  -v, --version           显示版本信息')
-  console.log('  -h, --help              显示帮助信息
-  -y, --non-interactive   非交互式模式，跳过所有确认提示\n')
+  console.log('  -h, --help              显示帮助信息')
+  console.log('  -y, --non-interactive   非交互式模式，跳过所有确认提示\n')
   console.log('示例:')
   console.log('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')
   console.log('\n如果没有提供参数，将启动交互式向导')
@@ -155,40 +155,16 @@ async function run() {
     mergedOptions.syncDirs = configOptions.syncDirs
   }
 
-  // 检查是否启用非交互式模式
+  // 确定是否启用非交互式模式
+  // 只有当明确指定-y或--non-interactive时才是非交互式模式
   const nonInteractive = args['non-interactive'] || false
 
-  // 如果缺少必要参数且不是非交互式模式，启动交互式提示
-  let options: SyncOptions
-  if (
-    (!mergedOptions.upstreamRepo || !mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0) && !nonInteractive
-  ) {
-    options = await promptForOptions(mergedOptions, nonInteractive)
-  }
-  else {
-    // 使用合并后的参数
-    options = {
-      upstreamRepo: mergedOptions.upstreamRepo!,
-      upstreamBranch: mergedOptions.upstreamBranch || 'master',
-      companyBranch: mergedOptions.companyBranch || 'master',
-      syncDirs: mergedOptions.syncDirs!,
-      commitMessage: mergedOptions.commitMessage || 'Sync upstream changes',
-      autoPush: mergedOptions.autoPush || false,
-      forceOverwrite: mergedOptions.forceOverwrite !== undefined ? mergedOptions.forceOverwrite : true,
-      verbose: mergedOptions.verbose || false,
-      silent: mergedOptions.silent || false,
-      dryRun: mergedOptions.dryRun || false,
-      nonInteractive: nonInteractive,
-      previewOnly: mergedOptions.previewOnly || false,
-      concurrencyLimit: mergedOptions.concurrencyLimit !== undefined ? mergedOptions.concurrencyLimit : 5,
-      retryConfig: mergedOptions.retryConfig || {
-        maxRetries: 3,
-        initialDelay: 2000,
-        backoffFactor: 1.5
-      },
-      nonInteractive: nonInteractive
-    } as SyncOptions
-  }
+  // 即使在非交互式模式下，如果缺少必要参数（upstreamRepo或syncDirs），也强制进入交互式模式
+  const forceInteractive = !mergedOptions.upstreamRepo || !mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0
+  const actualNonInteractive = nonInteractive && !forceInteractive
+
+  // 启动交互式提示
+  const options = await promptForOptions(mergedOptions, actualNonInteractive)
 
   try {
     const syncer = new UpstreamSyncer(options)
