@@ -17,15 +17,21 @@ module.exports = {
   upstreamBranch: 'main',
   // 目标分支
   targetBranch: 'master',
-  // 同步目录
-  syncDirs: [
-    {
-      // 上游目录
-      upstream: 'packages/core',
-      // 目标目录
-      target: 'packages/core'
-    }
-  ],
+  // 同步目录，可以是父级目录或子级目录
+syncDirs: [
+  'src', // 同步整个src目录
+  'src/components', // 同步src/components子目录
+  'src/utils/**' // 使用通配符同步所有子目录
+],
+// 或者使用对象格式进行更复杂的映射
+// syncDirs: [
+//   {
+//     // 上游目录
+//     upstream: 'packages/core',
+//     // 目标目录
+//     target: 'packages/core'
+//   }
+// ],
   // 并行处理的最大文件数
   maxParallelFiles: 5,
   // 网络请求最大重试次数
@@ -53,10 +59,12 @@ sync-upstream --upstreamRepo=https://github.com/example/upstream-repo.git --upst
 
 - `upstreamRepo`: 上游仓库地址
 - `upstreamBranch`: 上游分支
-- `targetBranch`: 目标分支
-- `syncDirs`: 同步目录配置数组
-  - `upstream`: 上游目录
-  - `target`: 目标目录
+- `companyBranch`: 公司（目标）分支
+- `syncDirs`: 同步目录数组，可以是字符串（目录路径）或对象
+  - 字符串格式: 直接指定要同步的目录路径，支持子目录和通配符
+  - 对象格式:
+    - `upstream`: 上游目录
+    - `target`: 目标目录
 
 ### 可选配置
 
