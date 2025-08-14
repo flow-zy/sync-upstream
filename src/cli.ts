@@ -1,7 +1,7 @@
 import type { SyncOptions } from './types'
 import minimist from 'minimist'
 
-import { bold, cyan, red } from 'picocolors'
+import { bgCyan, bold, cyan, green, red } from 'picocolors'
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 import { loadConfig } from './config'
@@ -77,30 +77,30 @@ if (args.version) {
 if (args.help) {
   console.log(bold(cyan('仓库目录 - 交互版\n')))
   console.log('用法: sync-upstream [选项]\n')
-  console.log('选项:')
-  console.log('  -r, --repo <url>        上游仓库 URL')
-  console.log('  -d, --dirs <目录>       要同步的目录，多个目录用逗号分隔')
-  console.log('  -b, --branch <分支>      上游分支 (默认: main)')
-  console.log('  -c, --company-branch <分支>  公司仓库分支 (默认: main)')
-  console.log('  -m, --message <消息>    提交消息')
-  console.log('  -p, --push              自动推送变更')
-  console.log('  -f, --force             强制覆盖本地文件，不使用增量复制 (默认: true)')
-  console.log('  -V, --verbose           显示详细日志信息')
-  console.log('  -s, --silent            静默模式，不输出日志')
-  console.log('  -n, --dry-run           试运行模式，不实际执行同步操作')
-  console.log('  -P, --preview-only      预览模式，只显示变更，不实际修改文件')
-  console.log('  -C, --config <路径>     指定配置文件路径')
-  console.log('  -F, --config-format <格式> 配置文件格式 (json, yaml, toml)')
-  console.log('  --rm, --retry-max <次数>   网络请求最大重试次数 (默认: 3)')
-  console.log('  --rd, --retry-delay <毫秒>  初始重试延迟时间 (默认: 2000)')
-  console.log('  --rb, --retry-backoff <因子> 重试退避因子 (默认: 1.5)')
-  console.log('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)')
-  console.log('  -v, --version           显示版本信息')
-  console.log('  -h, --help              显示帮助信息')
-  console.log('  -y, --non-interactive   非交互式模式，跳过所有确认提示\n')
+  console.log(green('选项:'))
+  console.log(green('  -r, --repo <url>        上游仓库 URL'))
+  console.log(green('  -d, --dirs <目录>       要同步的目录，多个目录用逗号分隔'))
+  console.log(green('  -b, --branch <分支>      上游分支 (默认: main)'))
+  console.log(green('  -c, --company-branch <分支>  公司仓库分支 (默认: main)'))
+  console.log(green('  -m, --message <消息>    提交消息'))
+  console.log(green('  -p, --push              自动推送变更'))
+  console.log(green('  -f, --force             强制覆盖本地文件，不使用增量复制 (默认: true)'))
+  console.log(green('  -V, --verbose           显示详细日志信息'))
+  console.log(green('  -s, --silent            静默模式，不输出日志'))
+  console.log(green('  -n, --dry-run           试运行模式，不实际执行同步操作'))
+  console.log(green('  -P, --preview-only      预览模式，只显示变更，不实际修改文件'))
+  console.log(green('  -C, --config <路径>     指定配置文件路径'))
+  console.log(green('  -F, --config-format <格式> 配置文件格式 (json, yaml, toml)'))
+  console.log(green('  --rm, --retry-max <次数>   网络请求最大重试次数 (默认: 3)'))
+  console.log(green('  --rd, --retry-delay <毫秒>  初始重试延迟时间 (默认: 2000)'))
+  console.log(green('  --rb, --retry-backoff <因子> 重试退避因子 (默认: 1.5)'))
+  console.log(green('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)'))
+  console.log(green('  -v, --version           显示版本信息'))
+  console.log(green('  -h, --help              显示帮助信息'))
+  console.log(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示\n'))
   console.log('示例:')
-  console.log('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')
-  console.log('\n如果没有提供参数，将启动交互式向导')
+  console.log(bold(cyan('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')))
+  console.log(`\n${red('如果没有提供参数，将启动交互式向导')}`)
   process.exit(0)
 }
 
