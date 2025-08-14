@@ -1,7 +1,7 @@
 import type { SyncOptions } from './types'
 import minimist from 'minimist'
 
-import { bgCyan, bold, cyan, green, red } from 'picocolors'
+import { yellow, bold, cyan, green, red } from 'picocolors'
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 import { loadConfig } from './config'
@@ -77,7 +77,7 @@ if (args.version) {
 if (args.help) {
   console.log(bold(cyan('仓库目录 - 交互版\n')))
   console.log('用法: sync-upstream [选项]\n')
-  console.log(green('选项:'))
+  console.log('选项:')
   console.log(green('  -r, --repo <url>        上游仓库 URL'))
   console.log(green('  -d, --dirs <目录>       要同步的目录，多个目录用逗号分隔'))
   console.log(green('  -b, --branch <分支>      上游分支 (默认: main)'))
@@ -100,7 +100,7 @@ if (args.help) {
   console.log(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示\n'))
   console.log('示例:')
   console.log(bold(cyan('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')))
-  console.log(`\n${red('如果没有提供参数，将启动交互式向导')}`)
+  console.log(`\n${yellow('如果没有提供参数，将启动交互式向导')}`)
   process.exit(0)
 }
 
