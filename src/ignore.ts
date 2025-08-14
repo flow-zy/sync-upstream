@@ -1,7 +1,7 @@
 // src/ignore.ts
 import path from 'node:path'
 import fs from 'fs-extra'
-import micromatch from 'micromatch'
+import picomatch from 'picomatch'
 
 /**
  * 规范化路径分隔符为正斜杠
@@ -41,5 +41,5 @@ export async function loadIgnorePatterns(baseDir: string): Promise<string[]> {
 export function shouldIgnore(filePath: string, ignorePatterns: string[]): boolean {
   // 规范化路径分隔符，确保在Windows上也能正确匹配
   const normalizedPath = normalizePath(filePath)
-  return micromatch.isMatch(normalizedPath, ignorePatterns)
+  return picomatch.isMatch(normalizedPath, ignorePatterns)
 }

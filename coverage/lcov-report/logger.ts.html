@@ -227,14 +227,12 @@
 <a name='L162'></a><a href='#L162'>162</a>
 <a name='L163'></a><a href='#L163'>163</a>
 <a name='L164'></a><a href='#L164'>164</a>
-<a name='L165'></a><a href='#L165'>165</a>
-<a name='L166'></a><a href='#L166'>166</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L165'></a><a href='#L165'>165</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -395,11 +393,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ConsolaInstance } from 'consola'
 <span class="cstat-no" title="statement not covered" >import path from 'node:path'</span>
-<span class="cstat-no" title="statement not covered" >import chalk from 'chalk'</span>
-<span class="cstat-no" title="statement not covered" >import consola from 'consola'</span>
-<span class="cstat-no" title="statement not covered" >import { format } from 'date-fns'</span>
+<span class="cstat-no" title="statement not covered" >import { consola } from 'consola'</span>
+<span class="cstat-no" title="statement not covered" >import dayjs from 'dayjs'</span>
 <span class="cstat-no" title="statement not covered" >import fs from 'fs-extra'</span>
-&nbsp;
+<span class="cstat-no" title="statement not covered" >import { blue, bold, cyan, gray, green, magenta, red, yellow } from 'picocolors'</span>
 // 定义日志级别
 <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >export enum L</span>ogLevel {</span>
 <span class="cstat-no" title="statement not covered" >  DEBUG = 'debug',</span>
@@ -458,7 +455,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
 &nbsp;
   // 获取当前时间戳
   private <span class="fstat-no" title="function not covered" >getTimestamp(</span>): string {
-<span class="cstat-no" title="statement not covered" >    return format(new Date(), 'YYYY-MM-DD HH:mm:ss')</span>
+<span class="cstat-no" title="statement not covered" >    return dayjs().format('YYYY-MM-DD HH:mm:ss')</span>
   }
 &nbsp;
   // 记录到文件
@@ -478,7 +475,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
   // 调试日志
 <span class="fstat-no" title="function not covered" >  debug(</span>message: string): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.DEBUG) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.debug(chalk.blue(`[DEBUG] ${message}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.debug(blue(`[DEBUG] ${message}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.DEBUG, message)</span>
     }
   }
@@ -486,7 +483,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
   // 详细日志
 <span class="fstat-no" title="function not covered" >  verbose(</span>message: string): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.VERBOSE) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.log(chalk.grey(`[VERBOSE] ${message}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.log(gray(`[VERBOSE] ${message}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.VERBOSE, message)</span>
     }
   }
@@ -500,7 +497,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
   // 信息日志
 <span class="fstat-no" title="function not covered" >  info(</span>message: string): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.INFO) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.info(chalk.cyan(`[INFO] ${message}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.info(cyan(`[INFO] ${message}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.INFO, message)</span>
     }
   }
@@ -508,7 +505,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
   // 成功日志
 <span class="fstat-no" title="function not covered" >  success(</span>message: string): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.SUCCESS) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.success(chalk.green(`[SUCCESS] ${message}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.success(green(`[SUCCESS] ${message}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.SUCCESS, message)</span>
     }
   }
@@ -516,7 +513,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
   // 警告日志
 <span class="fstat-no" title="function not covered" >  warn(</span>message: string): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.WARN) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.warn(chalk.yellow(`[WARN] ${message}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.warn(yellow(`[WARN] ${message}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.WARN, message)</span>
     }
   }
@@ -525,7 +522,7 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
 <span class="fstat-no" title="function not covered" >  error(</span>message: string, error?: Error): void {
 <span class="cstat-no" title="statement not covered" >    if (this.logLevels.indexOf(LogLevel.ERROR) &gt;= this.logLevels.indexOf(this.config.level)) {</span>
       const errorMessage = <span class="cstat-no" title="statement not covered" >error ? `${message}: ${error.message}` : message</span>
-<span class="cstat-no" title="statement not covered" >      this.consola.error(chalk.red(`[ERROR] ${errorMessage}`))</span>
+<span class="cstat-no" title="statement not covered" >      this.consola.error(red(`[ERROR] ${errorMessage}`))</span>
 <span class="cstat-no" title="statement not covered" >      this.logToFile(LogLevel.ERROR, errorMessage)</span>
 &nbsp;
       // 如果有错误堆栈，也记录下来
@@ -537,8 +534,8 @@ const DEFAULT_CONFIG: LoggerConfig = <span class="cstat-no" title="statement not
 &nbsp;
   // 步骤日志（用于显示同步过程中的主要步骤）
 <span class="fstat-no" title="function not covered" >  step(</span>stepNumber: number, message: string): void {
-    const formattedMessage = <span class="cstat-no" title="statement not covered" >chalk.bold.magenta(`</span>
-${stepNumber}. ${message}`)
+    const formattedMessage = <span class="cstat-no" title="statement not covered" >bold(magenta(`</span>
+${stepNumber}. ${message}`))
 <span class="cstat-no" title="statement not covered" >    this.consola.log(formattedMessage)</span>
 <span class="cstat-no" title="statement not covered" >    this.logToFile(LogLevel.INFO, `Step ${stepNumber}: ${message}`)</span>
   }
@@ -565,7 +562,7 @@ export const <span class="cstat-no" title="statement not covered" >logger = new 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-07T13:06:25.027Z
+                at 2025-08-14T07:22:46.056Z
             </div>
         <script src="prettify.js"></script>
         <script>

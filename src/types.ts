@@ -1,7 +1,7 @@
 export interface RetryConfig {
-  maxRetries?: number
-  initialDelay?: number
-  backoffFactor?: number
+  maxRetries: number
+  initialDelay: number
+  backoffFactor: number
 }
 
 /**

@@ -1,7 +1,7 @@
 import type { ConsolaInstance } from 'consola'
 import path from 'node:path'
 import { consola } from 'consola'
-import { format } from 'date-fns'
+import dayjs from 'dayjs'
 import fs from 'fs-extra'
 import { blue, bold, cyan, gray, green, magenta, red, yellow } from 'picocolors'
 // 定义日志级别
@@ -62,7 +62,7 @@ export class Logger {
 
   // 获取当前时间戳
   private getTimestamp(): string {
-    return format(new Date(), 'YYYY-MM-DD HH:mm:ss')
+    return dayjs().format('YYYY-MM-DD HH:mm:ss')
   }
 
   // 记录到文件
