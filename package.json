@@ -9,12 +9,22 @@
     "type": "git",
     "url": "https://github.com/flow-zy/sync-upstream.git"
   },
+  "bugs": {
+    "url": "https://github.com/flow-zy/sync-upstream/issues"
+  },
   "keywords": [
     "sync",
     "upstream",
     "git",
     "incremental",
-    "parallel"
+    "parallel",
+    "git sync",
+    "upstream sync",
+    "enterprise git",
+    "monorepo sync",
+    "lfs sync",
+    "devops"
+
   ],
   "main": "dist/index.js",
   "bin": {

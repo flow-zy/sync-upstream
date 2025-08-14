@@ -1,7 +1,7 @@
 import type { SyncOptions } from './types'
 import minimist from 'minimist'
 
-import { yellow, bold, cyan, green, red } from 'picocolors'
+import { bold, cyan, green, red, yellow } from 'picocolors'
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 import { loadConfig } from './config'
