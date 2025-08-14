@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/flow-zy/sync-upstream/compare/v0.2.0...v0.2.1) (2025-08-14)
+
+### 📝 Documentation | 文档
+
+* 更新文档结构和配置参考 ([4258b57](https://github.com/flow-zy/sync-upstream/commit/4258b57b421f4d514e181fd7b38637f7491dc46c))
+
+### 💄 Styles | 风格
+
+* **cli:** 调整控制台输出颜色和格式 ([d6b26d3](https://github.com/flow-zy/sync-upstream/commit/d6b26d34af2c4350b0fb7083d2bfaa7f7d34f58f))
+* **cli:** 为帮助信息添加颜色增强可读性 ([34f1071](https://github.com/flow-zy/sync-upstream/commit/34f1071c6d3440eed35d0d70490bef8f6d4786aa))
+
+### ♻ Code Refactoring | 代码重构
+
+* 优化构建配置和依赖管理 ([53bd0dd](https://github.com/flow-zy/sync-upstream/commit/53bd0dd86d643c6af8be1a0665f9e794700a03aa))
+
 # [0.2.0](https://github.com/flow-zy/sync-upstream/compare/v0.1.0...v0.2.0) (2025-08-13)
 
 
