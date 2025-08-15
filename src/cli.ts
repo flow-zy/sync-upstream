@@ -1,4 +1,5 @@
 import type { SyncOptions } from './types'
+import { GrayReleaseStrategy } from './types'
 import minimist from 'minimist'
 
 import { bold, cyan, green, red, yellow } from 'picocolors'
@@ -26,30 +27,30 @@ const args = minimist(process.argv.slice(2), {
   string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
   boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'gray-release', 'full-release', 'rollback'],
   alias: {
-      r: 'repo',
-      b: 'branch',
-      c: 'company-branch',
-      d: 'dirs',
-      m: 'message',
-      p: 'push',
-      f: 'force',
-      h: 'help',
-      v: 'version',
-      V: 'verbose',
-      s: 'silent',
-      n: 'dry-run',
-      P: 'preview-only',
-      C: 'config',
-      F: 'config-format',
-      rm: 'retry-max',
-      rd: 'retry-delay',
-      rb: 'retry-backoff',
-      cl: 'concurrency',
-      y: 'non-interactive',
-      gr: 'gray-release',
-      fr: 'full-release',
-      ro: 'rollback',
-    },
+    r: 'repo',
+    b: 'branch',
+    c: 'company-branch',
+    d: 'dirs',
+    m: 'message',
+    p: 'push',
+    f: 'force',
+    h: 'help',
+    v: 'version',
+    V: 'verbose',
+    s: 'silent',
+    n: 'dry-run',
+    P: 'preview-only',
+    C: 'config',
+    F: 'config-format',
+    rm: 'retry-max',
+    rd: 'retry-delay',
+    rb: 'retry-backoff',
+    cl: 'concurrency',
+    y: 'non-interactive',
+    gr: 'gray-release',
+    fr: 'full-release',
+    ro: 'rollback',
+  },
   default: {
     'branch': 'master',
     'company-branch': 'master',
@@ -174,30 +175,31 @@ async function run() {
 
   try {
     const syncer = new UpstreamSyncer(options)
-    
+
     // 处理灰度发布相关命令
+    const syncOptions = options as SyncOptions;
     if (args['gray-release']) {
       console.log(bold(cyan('启用灰度发布模式...')))
       // 这里可以添加灰度发布的特定配置
-      options.grayRelease = options.grayRelease || {
-        enabled: true,
-        strategy: 'PERCENTAGE',
+      syncOptions.grayRelease = syncOptions.grayRelease || {
+        enable: true,
+        strategy: GrayReleaseStrategy.PERCENTAGE,
         percentage: 20
       }
     }
-    
+
     if (args['full-release']) {
       console.log(bold(cyan('执行全量发布...')))
       await syncer.executeFullRelease()
       process.exit(0)
     }
-    
-    if (args['rollback']) {
+
+    if (args.rollback) {
       console.log(bold(cyan('执行回滚操作...')))
       await syncer.rollback()
       process.exit(0)
     }
-    
+
     await syncer.run()
   }
   catch (error) {

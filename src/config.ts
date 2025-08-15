@@ -4,7 +4,7 @@ import toml from '@iarna/toml'
 // src/config.ts
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
-import { ConflictResolutionStrategy } from './types'
+import { ConflictResolutionStrategy, GrayReleaseStrategy } from './types'
 
 const DEFAULT_CONFIG: Partial<SyncOptions> = {
   upstreamBranch: 'main',
@@ -26,8 +26,8 @@ const DEFAULT_CONFIG: Partial<SyncOptions> = {
     defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
   },
   grayRelease: {
-    enabled: false,
-    strategy: 'PERCENTAGE',
+    enable: false,
+    strategy: GrayReleaseStrategy.PERCENTAGE,
     percentage: 10,
   },
 }
