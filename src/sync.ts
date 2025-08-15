@@ -20,7 +20,6 @@ import { logger, LogLevel } from './logger'
 import { displaySummary } from './prompts'
 import { withRetry } from './retry'
 import { AuthType, GrayReleaseStrategy } from './types'
-import { GrayReleaseManager } from './grayRelease'
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
   private total: number
