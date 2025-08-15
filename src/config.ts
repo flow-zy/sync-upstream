@@ -4,7 +4,7 @@ import toml from '@iarna/toml'
 // src/config.ts
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
-import { ConflictResolutionStrategy, GrayReleaseStrategy } from './types'
+import { ConflictResolutionStrategy } from './types'
 
 const DEFAULT_CONFIG: Partial<SyncOptions> = {
   upstreamBranch: 'main',

@@ -24,13 +24,13 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
       })
     }
 
-    // 目标仓库分支
     if (initialOptions.companyBranch === undefined) {
+      // 目标仓库分支 - 总是提示，即使有默认值
       promptQuestions.push({
         type: 'text',
         name: 'companyBranch',
         message: '目标仓库分支名称:',
-        initial: 'master',
+        initial: initialOptions.companyBranch || 'master',
       })
     }
 

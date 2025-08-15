@@ -1,5 +1,4 @@
 import type { SyncOptions } from './types'
-import { GrayReleaseStrategy } from './types'
 import minimist from 'minimist'
 
 import { bold, cyan, green, red, yellow } from 'picocolors'
@@ -49,8 +48,8 @@ const args = minimist(process.argv.slice(2), {
     y: 'non-interactive',
   },
   default: {
-    'branch': 'master',
-    'company-branch': 'master',
+    'branch': 'main',
+    'company-branch': undefined,
     'dirs': '',
     'message': 'Sync upstream changes to specified directories',
     'push': false,
@@ -82,7 +81,7 @@ if (args.help) {
   console.log(green('  -r, --repo <url>        上游仓库 URL'))
   console.log(green('  -d, --dirs <目录>       要同步的目录，多个目录用逗号分隔'))
   console.log(green('  -b, --branch <分支>      上游分支 (默认: main)'))
-  console.log(green('  -c, --company-branch <分支>  公司仓库分支 (默认: main)'))
+  console.log(green('  -c, --company-branch <分支>  目标仓库分支 (默认: main)'))
   console.log(green('  -m, --message <消息>    提交消息'))
   console.log(green('  -p, --push              自动推送变更'))
   console.log(green('  -f, --force             强制覆盖本地文件，不使用增量复制 (默认: true)'))
