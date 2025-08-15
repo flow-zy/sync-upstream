@@ -146,4 +146,10 @@ export interface SyncOptions {
   cacheExpiryDays?: number
   /** 灰度发布配置 */
   grayRelease?: GrayReleaseConfig
+  /** 是否执行全量发布 */
+  fullRelease?: boolean
+  /** 是否执行回滚操作 */
+  rollback?: boolean
+  /** 用户传入的未知参数 */
+  unknownParams?: Record<string, any>
 }

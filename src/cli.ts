@@ -1,12 +1,13 @@
 import type { SyncOptions } from './types'
 import minimist from 'minimist'
-
 import { bold, cyan, green, red, yellow } from 'picocolors'
+
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 import { loadConfig } from './config'
 import { promptForOptions } from './prompts'
 import { UpstreamSyncer } from './sync'
+import { GrayReleaseStrategy } from './types'
 
 // 检查当前目录是否是Git仓库
 async function isGitRepository(): Promise<boolean> {
@@ -134,6 +135,17 @@ async function run() {
       initialDelay: args['retry-delay'],
       backoffFactor: args['retry-backoff'],
     },
+    // 灰度发布配置
+    grayRelease: args['gray-release'] ? {
+      enable: true,
+      strategy: GrayReleaseStrategy.PERCENTAGE, // 默认策略
+      percentage: 100, // 默认100%
+    } : undefined,
+    // 全量发布和回滚标记
+    fullRelease: args['full-release'],
+    rollback: args.rollback,
+    // 记录传入的未知参数，以便后续处理
+    unknownParams: Object.keys(args).filter(key => !['_', 'repo', 'r', 'branch', 'b', 'company-branch', 'c', 'dirs', 'd', 'message', 'm', 'push', 'p', 'force', 'f', 'verbose', 'V', 'silent', 's', 'dry-run', 'n', 'preview-only', 'P', 'config', 'C', 'config-format', 'F', 'retry-max', 'rm', 'retry-delay', 'rd', 'retry-backoff', 'rb', 'concurrency', 'cl', 'non-interactive', 'y', 'gray-release', 'gr', 'full-release', 'fr', 'rollback', 'ro', 'help', 'h', 'version', 'v'].includes(key)).reduce((obj, key) => ({ ...obj, [key]: args[key] }), {}),
   }
 
   // 加载配置文件
@@ -165,6 +177,13 @@ async function run() {
   // 即使在非交互式模式下，如果缺少必要参数（upstreamRepo或syncDirs），也强制进入交互式模式
   const forceInteractive = !mergedOptions.upstreamRepo || !mergedOptions.syncDirs || mergedOptions.syncDirs.length === 0
   const actualNonInteractive = nonInteractive && !forceInteractive
+
+  // 检查是否有未知参数
+  if (mergedOptions.unknownParams && Object.keys(mergedOptions.unknownParams).length > 0) {
+    console.error(red('错误: 检测到未知的配置项:'), Object.keys(mergedOptions.unknownParams).join(', '))
+    console.error(yellow('请使用 --help 查看所有可用的配置项'))
+    process.exit(1)
+  }
 
   // 启动交互式提示
   const options = await promptForOptions(mergedOptions, actualNonInteractive)
