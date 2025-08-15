@@ -4,6 +4,7 @@ import toml from '@iarna/toml'
 // src/config.ts
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
+import json5 from 'json5'
 import { ConflictResolutionStrategy } from './types'
 
 const DEFAULT_CONFIG: Partial<SyncOptions> = {
@@ -28,11 +29,13 @@ const DEFAULT_CONFIG: Partial<SyncOptions> = {
 }
 
 const CONFIG_FILES = [
+  '.sync-toolrc.json5',
   '.sync-toolrc.json',
   '.sync-toolrc.yaml',
   '.sync-toolrc.yml',
   '.sync-toolrc.toml',
   '.sync-toolrc',
+  'sync-tool.config.json5',
   'sync-tool.config.json',
   'sync-tool.config.yaml',
   'sync-tool.config.yml',
@@ -83,7 +86,10 @@ export async function loadConfig(): Promise<Partial<SyncOptions>> {
         let config: Partial<SyncOptions> = {}
 
         // 根据文件扩展名选择解析方法
-        if (filename.endsWith('.json')) {
+        if (filename.endsWith('.json5')) {
+          config = json5.parse(fileContent)
+        }
+        else if (filename.endsWith('.json')) {
           config = JSON.parse(fileContent)
         }
         else if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
