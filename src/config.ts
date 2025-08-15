@@ -25,11 +25,6 @@ const DEFAULT_CONFIG: Partial<SyncOptions> = {
   conflictResolutionConfig: {
     defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
   },
-  grayRelease: {
-    enable: false,
-    strategy: GrayReleaseStrategy.PERCENTAGE,
-    percentage: 10,
-  },
 }
 
 const CONFIG_FILES = [

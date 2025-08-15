@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2](https://github.com/flow-zy/sync-upstream/compare/v0.2.1...v0.2.2) (2025-08-15)
+
+### ✨ Features | 新功能
+
+* 添加灰度发布功能支持 ([ded4737](https://github.com/flow-zy/sync-upstream/commit/ded4737a0e8032ff8681cb288b0e0f3a0e82811b))
+
+### 💄 Styles | 风格
+
+* 优化导入顺序并更新package.json元数据 ([f6ee7fa](https://github.com/flow-zy/sync-upstream/commit/f6ee7fa7aa36a81245dafd38dcd612ecbd5ab6e9))
+
 ## [0.2.1](https://github.com/flow-zy/sync-upstream/compare/v0.2.0...v0.2.1) (2025-08-14)
 
 ### 📝 Documentation | 文档

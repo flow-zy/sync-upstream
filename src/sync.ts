@@ -19,7 +19,8 @@ import { isLargeFile, readFileInChunks, writeFileInChunks } from './lfs'
 import { logger, LogLevel } from './logger'
 import { displaySummary } from './prompts'
 import { withRetry } from './retry'
-import { AuthType } from './types'
+import { AuthType, GrayReleaseStrategy } from './types'
+import { GrayReleaseManager } from './grayRelease'
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
   private total: number
@@ -852,8 +853,7 @@ export class UpstreamSyncer {
     // 清理临时目录
     try {
       await fs.remove(this.tempDir)
-    }
-    catch (error) {
+    } catch (error) {
       logger.warn(`清理临时目录失败: ${error}`)
     }
   }

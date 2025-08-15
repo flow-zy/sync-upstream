@@ -47,9 +47,6 @@ const args = minimist(process.argv.slice(2), {
     rb: 'retry-backoff',
     cl: 'concurrency',
     y: 'non-interactive',
-    gr: 'gray-release',
-    fr: 'full-release',
-    ro: 'rollback',
   },
   default: {
     'branch': 'master',
@@ -175,31 +172,6 @@ async function run() {
 
   try {
     const syncer = new UpstreamSyncer(options)
-
-    // 处理灰度发布相关命令
-    const syncOptions = options as SyncOptions;
-    if (args['gray-release']) {
-      console.log(bold(cyan('启用灰度发布模式...')))
-      // 这里可以添加灰度发布的特定配置
-      syncOptions.grayRelease = syncOptions.grayRelease || {
-        enable: true,
-        strategy: GrayReleaseStrategy.PERCENTAGE,
-        percentage: 20
-      }
-    }
-
-    if (args['full-release']) {
-      console.log(bold(cyan('执行全量发布...')))
-      await syncer.executeFullRelease()
-      process.exit(0)
-    }
-
-    if (args.rollback) {
-      console.log(bold(cyan('执行回滚操作...')))
-      await syncer.rollback()
-      process.exit(0)
-    }
-
     await syncer.run()
   }
   catch (error) {

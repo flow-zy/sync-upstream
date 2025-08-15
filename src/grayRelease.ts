@@ -1,12 +1,11 @@
-import type { GrayReleaseConfig, SyncOptions } from './types'
-import { execSync } from 'node:child_process'
+import  { type GrayReleaseConfig, GrayReleaseStrategy, type SyncOptions } from './types'
 import path from 'node:path'
 import fs from 'fs-extra'
+import { logger } from './logger'
 import { cyan, green, red, yellow } from 'picocolors'
+import { execSync } from 'node:child_process'
 import { FsError, SyncProcessError } from './errors'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
-import { logger } from './logger'
-import { GrayReleaseStrategy } from './types'
 
 /**
  * 灰度发布管理器
@@ -133,8 +132,7 @@ export class GrayReleaseManager {
         await this.copyDirectoryWithIgnore(sourcePath, destPath, ignorePatterns)
 
         logger.info(`  发布目录: ${dir}`)
-      }
-      else {
+      } else {
         logger.warn(`  目录不存在: ${dir}`)
       }
     }
@@ -164,8 +162,8 @@ export class GrayReleaseManager {
           const fullPath = path.join(sourcePath, file)
           const relativePath = path.relative(this.tempDir, fullPath)
           if (
-            !shouldIgnore(relativePath, ignorePatterns)
-            && this.matchFilePattern(relativePath, filePatterns)
+            !shouldIgnore(relativePath, ignorePatterns) &&
+            this.matchFilePattern(relativePath, filePatterns)
           ) {
             matchedFiles.push(relativePath)
           }
@@ -200,8 +198,7 @@ export class GrayReleaseManager {
 
       logger.info(`验证脚本输出: ${green(result.toString())}`)
       logger.success('验证通过')
-    }
-    catch (error) {
+    } catch (error) {
       logger.error(`验证失败: ${red((error as Error).message)}`)
 
       // 如果配置了验证失败自动回滚，则执行回滚
@@ -209,8 +206,7 @@ export class GrayReleaseManager {
         logger.info('验证失败，开始自动回滚...')
         await this.rollback()
         throw new SyncProcessError('验证失败并已自动回滚')
-      }
-      else {
+      } else {
         throw new SyncProcessError('验证失败')
       }
     }
@@ -329,7 +325,7 @@ export class GrayReleaseManager {
   private async copyDirectoryWithIgnore(
     source: string,
     destination: string,
-    ignorePatterns: string[],
+    ignorePatterns: string[]
   ): Promise<void> {
     await fs.ensureDir(destination)
 
@@ -348,8 +344,7 @@ export class GrayReleaseManager {
       if (entry.isDirectory()) {
         // 递归处理子目录
         await this.copyDirectoryWithIgnore(sourcePath, destPath, ignorePatterns)
-      }
-      else {
+      } else {
         // 复制文件
         await fs.copyFile(sourcePath, destPath)
       }
