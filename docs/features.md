@@ -40,6 +40,12 @@
 - **优势**: 适应不同项目的需求
 - **相关配置**: 所有配置项
 
+### 🚀 灰度发布 & 一键回滚
+- **描述**: 以可控方式逐步将上游变更同步到生产环境，并在出现问题时快速回滚
+- **实现方式**: 基于策略的灰度发布管理器，支持百分比、目录和文件三种灰度策略
+- **优势**: 降低变更风险，提高系统稳定性，实现快速回滚
+- **相关配置**: `grayRelease.enable`, `grayRelease.strategy`, `grayRelease.percentage`, `grayRelease.canaryDirs`, `grayRelease.validationScript`
+
 ## 安全与认证
 
 ### 🔒 多类型认证支持
