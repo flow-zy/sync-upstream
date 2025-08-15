@@ -18,7 +18,8 @@ import { logger, LogLevel } from './logger'
 
 import { displaySummary } from './prompts'
 import { withRetry } from './retry'
-import { AuthType } from './types'
+import { AuthType, GrayReleaseStrategy } from './types'
+import { GrayReleaseManager } from './grayRelease'
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
   private total: number
@@ -59,8 +60,10 @@ export class UpstreamSyncer {
   private forceOverwrite: boolean
   private conflictResolver: ConflictResolver
   private tempResourcesCreated: boolean = false
+  private grayReleaseManager: GrayReleaseManager
 
   constructor(private options: SyncOptions) {
+    this.grayReleaseManager = new GrayReleaseManager(options)
     // 构建 Git 配置选项
     const gitOptions: any = {
       progress: this.handleProgress.bind(this),
@@ -637,6 +640,14 @@ export class UpstreamSyncer {
   }
 
   private async applyChanges(): Promise<void> {
+    // 如果启用了灰度发布
+    if (this.grayReleaseManager.isEnabled()) {
+      this.logStep('执行灰度发布...')
+      await this.grayReleaseManager.executeCanaryRelease()
+      logger.info('灰度发布已完成。如需全量发布，请运行 sync-upstream --full-release')
+      return
+    }
+
     this.logStep('应用更新到公司仓库...')
 
     try {
@@ -841,10 +852,27 @@ export class UpstreamSyncer {
     // 清理临时目录
     try {
       await fs.remove(this.tempDir)
-    }
-    catch (error) {
+    } catch (error) {
       logger.warn(`清理临时目录失败: ${error}`)
     }
+  }
+
+  /**
+   * 执行全量发布
+   */
+  async executeFullRelease(): Promise<void> {
+    this.logStep('执行全量发布...')
+    await this.grayReleaseManager.executeFullRelease()
+    logger.success('全量发布完成')
+  }
+
+  /**
+   * 执行回滚操作
+   */
+  async rollback(): Promise<void> {
+    this.logStep('执行回滚操作...')
+    await this.grayReleaseManager.rollback()
+    logger.success('回滚操作完成')
   }
 
   public async run(): Promise<void> {

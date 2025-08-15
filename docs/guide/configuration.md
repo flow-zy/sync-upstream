@@ -76,6 +76,15 @@ sync-upstream --upstreamRepo=https://github.com/example/upstream-repo.git --upst
 - `autoPush`: 是否自动推送到目标仓库，默认为false
 - `ignorePatterns`: 忽略的文件模式数组，默认为[]
 - `conflictResolution`: 冲突解决策略，可选值为'ask'、'ours'、'theirs'，默认为'ask'
+- `grayRelease`: 灰度发布配置对象
+  - `enable`: 是否启用灰度发布，默认为false
+  - `strategy`: 灰度发布策略，可选值为'PERCENTAGE'、'DIRECTORY'、'FILE'
+  - `percentage`: 灰度发布的百分比 (当策略为PERCENTAGE时使用)，默认为10
+  - `canaryDirs`: 金丝雀发布的目录列表 (当策略为DIRECTORY时使用)，默认为[]
+  - `validationScript`: 验证脚本路径，默认为undefined
+  - `maxRetries`: 验证失败重试次数，默认为3
+  - `rollbackOnFailure`: 验证失败时是否自动回滚，默认为true
+  - `auditLogPath`: 审计日志路径，默认为undefined
 
 ## 下一步
 

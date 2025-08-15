@@ -24,29 +24,32 @@ async function isGitRepository(): Promise<boolean> {
 const args = minimist(process.argv.slice(2), {
   // 使用string类型并在后续代码中转换为数字
   string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
-  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive'],
+  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'gray-release', 'full-release', 'rollback'],
   alias: {
-    r: 'repo',
-    b: 'branch',
-    c: 'company-branch',
-    d: 'dirs',
-    m: 'message',
-    p: 'push',
-    f: 'force',
-    h: 'help',
-    v: 'version',
-    V: 'verbose',
-    s: 'silent',
-    n: 'dry-run',
-    P: 'preview-only',
-    C: 'config',
-    F: 'config-format',
-    rm: 'retry-max',
-    rd: 'retry-delay',
-    rb: 'retry-backoff',
-    cl: 'concurrency',
-    y: 'non-interactive',
-  },
+      r: 'repo',
+      b: 'branch',
+      c: 'company-branch',
+      d: 'dirs',
+      m: 'message',
+      p: 'push',
+      f: 'force',
+      h: 'help',
+      v: 'version',
+      V: 'verbose',
+      s: 'silent',
+      n: 'dry-run',
+      P: 'preview-only',
+      C: 'config',
+      F: 'config-format',
+      rm: 'retry-max',
+      rd: 'retry-delay',
+      rb: 'retry-backoff',
+      cl: 'concurrency',
+      y: 'non-interactive',
+      gr: 'gray-release',
+      fr: 'full-release',
+      ro: 'rollback',
+    },
   default: {
     'branch': 'master',
     'company-branch': 'master',
@@ -97,7 +100,10 @@ if (args.help) {
   console.log(green('  --cl, --concurrency <数量> 并行处理的最大文件数量 (默认: 5)'))
   console.log(green('  -v, --version           显示版本信息'))
   console.log(green('  -h, --help              显示帮助信息'))
-  console.log(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示\n'))
+  console.log(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示'))
+  console.log(green('  --gr, --gray-release    启用灰度发布模式'))
+  console.log(green('  --fr, --full-release    执行全量发布'))
+  console.log(green('  --ro, --rollback        执行回滚操作\n'))
   console.log('示例:')
   console.log(bold(cyan('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')))
   console.log(`\n${yellow('如果没有提供参数，将启动交互式向导')}`)
@@ -168,6 +174,30 @@ async function run() {
 
   try {
     const syncer = new UpstreamSyncer(options)
+    
+    // 处理灰度发布相关命令
+    if (args['gray-release']) {
+      console.log(bold(cyan('启用灰度发布模式...')))
+      // 这里可以添加灰度发布的特定配置
+      options.grayRelease = options.grayRelease || {
+        enabled: true,
+        strategy: 'PERCENTAGE',
+        percentage: 20
+      }
+    }
+    
+    if (args['full-release']) {
+      console.log(bold(cyan('执行全量发布...')))
+      await syncer.executeFullRelease()
+      process.exit(0)
+    }
+    
+    if (args['rollback']) {
+      console.log(bold(cyan('执行回滚操作...')))
+      await syncer.rollback()
+      process.exit(0)
+    }
+    
     await syncer.run()
   }
   catch (error) {

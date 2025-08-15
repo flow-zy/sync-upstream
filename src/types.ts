@@ -72,6 +72,42 @@ export interface ConflictResolutionConfig {
   logResolutions?: boolean
 }
 
+/**
+ * 灰度发布策略枚举
+ */
+export enum GrayReleaseStrategy {
+  /** 按百分比发布 */
+  PERCENTAGE = 'percentage',
+  /** 按目录发布 */
+  DIRECTORY = 'directory',
+  /** 按文件发布 */
+  FILE = 'file',
+}
+
+/**
+ * 灰度发布配置接口
+ */
+export interface GrayReleaseConfig {
+  /** 是否启用灰度发布 */
+  enable: boolean;
+  /** 灰度发布策略 */
+  strategy: GrayReleaseStrategy;
+  /** 发布百分比 (0-100)，用于 PERCENTAGE 策略 */
+  percentage?: number;
+  /** 金丝雀目录列表，用于 DIRECTORY 策略 */
+  canaryDirs?: string[];
+  /** 文件模式列表，用于 FILE 策略 */
+  filePatterns?: string[];
+  /** 自动验证脚本路径 */
+  validationScript?: string;
+  /** 验证失败重试次数 */
+  maxRetries?: number;
+  /** 验证失败是否自动回滚 */
+  rollbackOnFailure?: boolean;
+  /** 审计日志路径 */
+  auditLogPath?: string;
+}
+
 export interface SyncOptions {
   upstreamRepo: string
   upstreamBranch: string
@@ -107,5 +143,7 @@ export interface SyncOptions {
   /** 缓存目录路径 */
   cacheDir?: string
   /** 缓存过期时间 (天) */
-  cacheExpiryDays?: number
+  cacheExpiryDays?: number;
+  /** 灰度发布配置 */
+  grayRelease?: GrayReleaseConfig;
 }
