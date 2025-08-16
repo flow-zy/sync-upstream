@@ -157,7 +157,7 @@ export async function promptForOptions(initialOptions: Partial<SyncOptions> = {}
       type: 'list',
       name: 'syncDirs',
       message: '要同步的目录(用逗号分隔):',
-      initial: initialOptions.syncDirs?.join('') || '',
+      initial: initialOptions.syncDirs?.join(',') || '',
       separator: ',',
       format: value => value.map((item: string) => item.trim()).filter(Boolean),
     },
@@ -245,7 +245,7 @@ export function displaySummary(options: SyncOptions) {
   console.log(cyan(`  - 上游仓库: ${options.upstreamRepo}`))
   console.log(cyan(`  - 上游分支: ${options.upstreamBranch}`))
   console.log(cyan(`  - 目标仓库分支: ${options.companyBranch}`))
-  console.log(yellow(`  - 同步目录: ${options.syncDirs.join(', ')}`))
+  console.log(yellow(`  - 同步目录: ${options.syncDirs.join(',')}`))
   console.log(magenta(`  - 提交消息: ${options.commitMessage}`))
   console.log(green(`  - 自动推送: ${options.autoPush ? '是' : '否'}`))
   console.log(yellow(`  - 预览模式: ${options.previewOnly ? '启用' : '禁用'}`))

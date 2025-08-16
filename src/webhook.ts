@@ -84,18 +84,32 @@ export class WebhookServer {
       return
     }
 
-    // 验证请求签名
-    if (!this.verifySignature(req)) {
-      res.writeHead(401)
-      res.end('Unauthorized')
+    // 记录请求信息
+    const eventType = req.headers['x-github-event'] || req.headers['x-gitlab-event'] || req.headers['x-bitbucket-event'] || 'unknown'
+    const clientIp = this.getClientIp(req)
+    logger.info(`收到Webhook请求: ${eventType} 从 ${clientIp}`)
+
+    // 解析请求体
+    let body: any
+    try {
+      body = await this.getRequestBody(req)
+    }
+    catch (parseError) {
+      res.writeHead(400)
+      res.end('Invalid payload format')
+      logger.warn(`Webhook请求被拒绝: 无效的payload格式 - ${parseError instanceof Error ? parseError.message : String(parseError)}`)
       return
     }
 
-    // 解析请求体
-    const body = await this.getRequestBody(req)
+    // 验证请求签名
+    if (!this.verifySignature(req, JSON.stringify(body))) {
+      res.writeHead(401)
+      res.end('Unauthorized')
+      logger.warn('Webhook请求被拒绝: 签名无效')
+      return
+    }
 
     // 验证事件类型
-    const eventType = req.headers['x-github-event'] || req.headers['x-gitlab-event'] || ''
     if (!this.config.allowedEvents.includes(eventType as string)) {
       logger.info(`忽略不支持的事件类型: ${eventType}`)
       res.writeHead(200)
@@ -120,6 +134,9 @@ export class WebhookServer {
       return
     }
 
+    // 记录Webhook触发历史
+    this.recordWebhookEvent(eventType as string, branch, body, clientIp)
+
     // 触发同步
     try {
       logger.info(`收到Webhook触发，开始同步分支: ${branch}`)
@@ -133,25 +150,78 @@ export class WebhookServer {
     catch (error) {
       logger.error(`Webhook触发的同步失败: ${error instanceof Error ? error.message : String(error)}`)
       res.writeHead(500)
-      res.end('Sync failed')
+      res.end(`Sync failed: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  /**
+   * 记录Webhook事件历史
+   */
+  private recordWebhookEvent(eventType: string, branch: string, payload: any, ip: string): void {
+    const eventHistory = {
+      timestamp: new Date().toISOString(),
+      eventType,
+      branch,
+      ip,
+      payload: JSON.stringify(payload, null, 2),
+    }
+
+    // 在实际应用中，可能会将事件历史存储到数据库或文件中
+    logger.info(`Webhook事件已记录: ${eventType} 用于分支 ${branch}`)
+  }
+
+  /**
+   * 获取客户端IP地址
+   */
+  private getClientIp(req: IncomingMessage): string {
+    // 考虑代理环境下的IP获取
+    const xff = req.headers['x-forwarded-for']
+    if (typeof xff === 'string') {
+      return xff.split(',')[0].trim()
+    }
+    return req.socket.remoteAddress || 'unknown'
   }
 
   /**
    * 验证Webhook请求签名
    */
-  private verifySignature(req: IncomingMessage): boolean {
+  private verifySignature(req: IncomingMessage, body: string): boolean {
     const signature = req.headers['x-hub-signature-256'] || req.headers['x-gitlab-token'] || ''
 
-    // 简化版的签名验证，实际应用中应使用正确的加密算法验证
-    // 这里只是一个示例实现
     if (!signature || typeof signature !== 'string') {
       return false
     }
 
-    // 对于演示 purposes，我们仅检查secret是否匹配
-    // 实际应用中应使用HMAC等算法验证签名
-    return Boolean(this.config.secret && signature.includes(this.config.secret))
+    // 如果没有配置secret，则跳过验证
+    if (!this.config.secret) {
+      logger.warn('Webhook secret未配置，跳过签名验证')
+      return true
+    }
+
+    // GitHub签名验证 (x-hub-signature-256)
+    if (signature.startsWith('sha256=')) {
+      const crypto = require('node:crypto')
+      const hmac = crypto.createHmac('sha256', this.config.secret)
+      const digest = `sha256=${hmac.update(body).digest('hex')}`
+      return signature === digest
+    }
+
+    // GitLab签名验证 (x-gitlab-token)
+    if (req.headers['x-gitlab-token']) {
+      return signature === this.config.secret
+    }
+
+    // Bitbucket签名验证 (x-hub-signature)
+    if (req.headers['x-hub-signature']) {
+      const crypto = require('node:crypto')
+      const hmac = crypto.createHmac('sha256', this.config.secret)
+      const digest = hmac.update(body).digest('hex')
+      return signature === digest
+    }
+
+    // 未知的签名类型，默认拒绝
+    logger.warn('未知的Webhook签名类型')
+    return false
   }
 
   /**

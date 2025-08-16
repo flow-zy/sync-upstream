@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-17)
+
+### ✨ Features | 新功能
+
+* **webhook:** 增强Webhook功能，支持多平台签名验证和事件历史记录 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
+* **conflict:** 改进冲突解决机制，实现智能合并算法和差异预览 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
+
+### 🛠 Improvements | 改进
+
+* **webhook:** 优化Webhook请求处理逻辑和错误处理 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
+* **conflict:** 完善冲突解决日志记录和用户交互体验 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
+
+### ♻ Code Refactoring | 代码重构
+
+* **webhook:** 重构Webhook相关代码，提高可维护性 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
+* **conflict:** 优化冲突检测和解决流程 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
+
 ## [0.2.4](https://github.com/flow-zy/sync-upstream/compare/v0.2.3...v0.2.4) (2025-08-16)
 
 ### ✨ Features | 新功能

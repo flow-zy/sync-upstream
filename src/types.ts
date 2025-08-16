@@ -141,6 +141,20 @@ export interface GrayReleaseConfig {
 }
 
 /**
+ * 缓存配置接口
+ */
+export interface CacheConfig {
+  /** 缓存过期时间（毫秒） */
+  expiryMs?: number
+  /** 最大缓存大小（字节） */
+  maxSizeBytes?: number
+  /** 是否启用LRU缓存策略 */
+  lruEnabled?: boolean
+  /** LRU缓存最大条目数 */
+  lruMaxEntries?: number
+}
+
+/**
  * Webhook配置接口
  */
 export interface WebhookConfig {
@@ -181,4 +195,8 @@ export interface SyncOptions {
   webhookConfig?: WebhookConfig
   fullRelease?: boolean
   rollback?: boolean
+  /** 缓存配置 */
+  cacheConfig?: CacheConfig
+  /** 是否启用自适应并发 */
+  adaptiveConcurrency?: boolean
 }

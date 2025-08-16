@@ -33,7 +33,8 @@ sync-upstream 是一款面向企业与开源团队的**上游代码生命周期�
 - **增量哈希 diff**：仅同步变更文件，节省带宽和时间
 - **并行文件处理**：自适应并发（CPU×2，上限 64），大幅提升处理速度
 - **大文件支持**：LFS / Git-Annex 集成，轻松处理 2GB+ 二进制文件
-- **本地缓存代理**：内网缓存，带宽节省 80%，加速团队协作
+- **高级缓存系统**：LRU 缓存淘汰策略 + 大小限制 + 过期清理，进一步提升性能
+- **智能哈希缓存**：文件哈希值缓存，减少重复计算开销
 
 ### 🔐 安全与合规
 - **多认证方式**：支持 SSH / PAT / GitHub App / OIDC
@@ -108,7 +109,12 @@ module.exports = {
   // 缓存配置
   useCache: true,
   cacheDir: './.sync-cache',
-  cacheExpiryDays: 7,
+  cacheConfig: {
+    expiryMs: 7 * 24 * 60 * 60 * 1000, // 7天
+    maxSizeBytes: 512 * 1024 * 1024, // 512MB
+    lruEnabled: true,
+    lruMaxEntries: 1000
+  },
   // 分支策略配置
   branchStrategyConfig: {
     enable: true,

@@ -248,6 +248,12 @@ export class ConflictResolver {
     let resolved = false
     const fileExtension = path.extname(conflict.sourcePath).toLowerCase()
     const isAutoResolveType = this.config.autoResolveTypes?.includes(fileExtension) || false
+    const conflictId = `${conflict.sourcePath}-${conflict.targetPath}-${Date.now()}`
+
+    // 记录冲突开始
+    if (this.config.logResolutions) {
+      logger.info(`开始解决冲突: ${conflictId} (${conflict.type})`)
+    }
 
     switch (strategy) {
       case ConflictResolutionStrategy.USE_SOURCE:
@@ -262,17 +268,27 @@ export class ConflictResolver {
         break
 
       case ConflictResolutionStrategy.AUTO_MERGE:
-        // 尝试自动合并（这里简化实现，实际项目中可能需要更复杂的合并逻辑）
         try {
           const sourceContent = await fs.readFile(conflict.sourcePath, 'utf8')
           const targetContent = await fs.readFile(conflict.targetPath, 'utf8')
 
-          // 简单的合并策略：保留双方内容并添加标记
-          const mergedContent = `<<<<<<< SOURCE
+          // 改进的合并策略
+          let mergedContent = ''
+
+          // 对于特定文件类型，使用更智能的合并算法
+          if (['.js', '.ts', '.jsx', '.tsx', '.css', '.scss', '.html'].includes(fileExtension)) {
+            // 尝试基于行的差异合并
+            mergedContent = this.smartMerge(sourceContent, targetContent, conflict)
+          }
+          else {
+            // 回退到标准合并标记格式
+            mergedContent = `<<<<<<< SOURCE
 ${sourceContent}
 =======
 ${targetContent}
 >>>>>>> TARGET`
+          }
+
           await fs.writeFile(conflict.targetPath, mergedContent)
           logger.info(`冲突解决: 自动合并文件 ${yellow(conflict.targetPath)}`)
           resolved = true
@@ -290,14 +306,20 @@ ${targetContent}
           return this.resolveContentConflict(conflict, this.config.defaultStrategy)
         }
 
+        // 获取文件差异预览
+        const sourceContent = await fs.readFile(conflict.sourcePath, 'utf8')
+        const targetContent = await fs.readFile(conflict.targetPath, 'utf8')
+        const diffPreview = this.generateDiffPreview(sourceContent, targetContent)
+
         // 提示用户解决
         const { resolution } = await prompts({
           type: 'select',
           name: 'resolution',
-          message: `文件 ${yellow(conflict.targetPath)} 存在内容冲突，如何解决?`,
+          message: `文件 ${yellow(conflict.targetPath)} 存在内容冲突，如何解决?\n${diffPreview}`,
           choices: [
             { title: '使用源文件覆盖', value: ConflictResolutionStrategy.USE_SOURCE },
             { title: '保留目标文件', value: ConflictResolutionStrategy.KEEP_TARGET },
+            { title: '尝试自动合并', value: ConflictResolutionStrategy.AUTO_MERGE },
             { title: '查看并编辑合并结果', value: 'edit' },
           ],
         })
@@ -305,6 +327,13 @@ ${targetContent}
         if (resolution === 'edit') {
           // 在实际项目中，这里可以打开编辑器让用户手动合并
           logger.info(`提示: 请手动编辑文件 ${yellow(conflict.targetPath)} 解决冲突`)
+          // 生成合并标记文件供用户编辑
+          const mergedContent = `<<<<<<< SOURCE
+${sourceContent}
+=======
+${targetContent}
+>>>>>>> TARGET`
+          await fs.writeFile(conflict.targetPath, mergedContent)
           return false
         }
         else {
@@ -318,10 +347,148 @@ ${targetContent}
 
     // 记录冲突解决日志
     if (resolved && this.config.logResolutions) {
-      logger.debug(`冲突解决日志: 类型=${conflict.type}, 源文件=${conflict.sourcePath}, 目标文件=${conflict.targetPath}, 策略=${strategy}`)
+      this.recordConflictResolution(conflict, strategy, conflictId)
     }
 
     return resolved
+  }
+
+  /**
+   * 智能合并算法
+   * 针对代码文件进行更智能的合并尝试
+   */
+  private smartMerge(sourceContent: string, targetContent: string, conflict: ConflictInfo): string {
+    const sourceLines = sourceContent.split('\n')
+    const targetLines = targetContent.split('\n')
+
+    // 简单的基于行的合并实现
+    // 在实际应用中，可以使用更复杂的算法或专门的合并库
+    const mergedLines: string[] = []
+    let i = 0; let j = 0
+
+    while (i < sourceLines.length || j < targetLines.length) {
+      if (i >= sourceLines.length) {
+        // 源文件已结束，添加目标文件剩余行
+        mergedLines.push(...targetLines.slice(j))
+        break
+      }
+      else if (j >= targetLines.length) {
+        // 目标文件已结束，添加源文件剩余行
+        mergedLines.push(...sourceLines.slice(i))
+        break
+      }
+      else if (sourceLines[i] === targetLines[j]) {
+        // 行相同，添加到合并结果
+        mergedLines.push(sourceLines[i])
+        i++
+        j++
+      }
+      else {
+        // 行不同，查找可能的匹配点
+        let sourceMatchIndex = -1
+        for (let k = j + 1; k < targetLines.length; k++) {
+          if (targetLines[k] === sourceLines[i]) {
+            sourceMatchIndex = k
+            break
+          }
+        }
+
+        let targetMatchIndex = -1
+        for (let k = i + 1; k < sourceLines.length; k++) {
+          if (sourceLines[k] === targetLines[j]) {
+            targetMatchIndex = k
+            break
+          }
+        }
+
+        if (sourceMatchIndex !== -1 && targetMatchIndex !== -1) {
+          // 双向匹配，选择较短的插入
+          if (sourceMatchIndex - j < targetMatchIndex - i) {
+            mergedLines.push(...targetLines.slice(j, sourceMatchIndex))
+            j = sourceMatchIndex
+          }
+          else {
+            mergedLines.push(...sourceLines.slice(i, targetMatchIndex))
+            i = targetMatchIndex
+          }
+        }
+        else if (sourceMatchIndex !== -1) {
+          // 只在目标文件中找到匹配
+          mergedLines.push(...targetLines.slice(j, sourceMatchIndex))
+          j = sourceMatchIndex
+        }
+        else if (targetMatchIndex !== -1) {
+          // 只在源文件中找到匹配
+          mergedLines.push(...sourceLines.slice(i, targetMatchIndex))
+          i = targetMatchIndex
+        }
+        else {
+          // 没有找到匹配，使用标准合并标记
+          mergedLines.push('<<<<<<< SOURCE')
+          mergedLines.push(sourceLines[i])
+          mergedLines.push('=======')
+          mergedLines.push(targetLines[j])
+          mergedLines.push('>>>>>>> TARGET')
+          i++
+          j++
+        }
+      }
+    }
+
+    return mergedLines.join('\n')
+  }
+
+  /**
+   * 生成差异预览
+   */
+  private generateDiffPreview(sourceContent: string, targetContent: string): string {
+    const sourceLines = sourceContent.split('\n')
+    const targetLines = targetContent.split('\n')
+    const maxLines = 5 // 预览的最大行数
+
+    // 简单实现，只显示前几行差异
+    let diffCount = 0
+    let preview = ''
+
+    for (let i = 0; i < Math.max(sourceLines.length, targetLines.length) && diffCount < maxLines; i++) {
+      const sourceLine = i < sourceLines.length ? sourceLines[i] : ''
+      const targetLine = i < targetLines.length ? targetLines[i] : ''
+
+      if (sourceLine !== targetLine) {
+        preview += `\n- ${sourceLine}`
+        preview += `\n+ ${targetLine}`
+        diffCount++
+      }
+    }
+
+    if (diffCount === 0) {
+      return '\n没有检测到明显差异（可能是空白字符或格式差异）'
+    }
+
+    if (diffCount >= maxLines) {
+      preview += `\n... 更多差异（显示前${maxLines}行）`
+    }
+
+    return preview
+  }
+
+  /**
+   * 记录冲突解决
+   */
+  private recordConflictResolution(conflict: ConflictInfo, strategy: ConflictResolutionStrategy, conflictId: string): void {
+    const resolutionRecord = {
+      id: conflictId,
+      timestamp: new Date().toISOString(),
+      conflictType: conflict.type,
+      sourcePath: conflict.sourcePath,
+      targetPath: conflict.targetPath,
+      resolutionStrategy: strategy,
+      userId: 'system', // 在实际应用中，可以记录用户信息
+    }
+
+    // 在实际应用中，可能会将记录存储到数据库或文件中
+    logger.info(`冲突解决记录: ${conflictId} 类型=${conflict.type} 策略=${strategy}`)
+    logger.debug(`详细记录: ${JSON.stringify(resolutionRecord, null, 2)}`)
   }
 
   /**

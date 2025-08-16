@@ -1,20 +1,22 @@
 import type { SimpleGit, SimpleGitProgressEvent } from 'simple-git'
 import type { RetryConfig } from './retry'
 import type { SyncOptions } from './types'
+import os from 'node:os'
 import path from 'node:path'
+import { performance } from 'node:perf_hooks'
 import fs from 'fs-extra'
 import pLimit from 'p-limit'
 import { blue, bold, cyan, green, magenta, yellow } from 'picocolors'
 import prompts from 'prompts'
 import simpleGit from 'simple-git'
 
-import { initializeCache } from './cache'
+import { getFromCache, initializeCache, writeToCache } from './cache'
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
 import { GrayReleaseManager } from './grayRelease'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
-import { isLargeFile, readFileInChunks, writeFileInChunks } from './lfs'
+import { isLargeFile } from './lfs'
 import { logger, LogLevel } from './logger'
 
 import { displaySummary } from './prompts'
@@ -61,9 +63,12 @@ export class UpstreamSyncer {
   private forceOverwrite: boolean
   private conflictResolver: ConflictResolver
   private tempResourcesCreated: boolean = false
+  private cpuCount: number
+  private adaptiveConcurrency: boolean = true
   private grayReleaseManager: GrayReleaseManager
   private originalBranch: string = ''
   private strategyBranch: string = ''
+  private operationTimes: Record<string, { start: number, end?: number }> = {}
 
   constructor(private options: SyncOptions) {
     this.grayReleaseManager = new GrayReleaseManager(options)
@@ -123,8 +128,18 @@ export class UpstreamSyncer {
     // 从选项中获取强制覆盖标志，如果没有提供则默认为true
     this.forceOverwrite = options.forceOverwrite !== undefined ? options.forceOverwrite : true
 
-    // 从选项中获取并发限制，如果没有提供则默认为5
-    this.concurrencyLimit = options.concurrencyLimit !== undefined ? options.concurrencyLimit : 5
+    // 获取CPU核心数
+    this.cpuCount = os.cpus().length
+
+    // 从选项中获取并发限制，如果没有提供则根据CPU核心数动态设置
+    this.concurrencyLimit = options.concurrencyLimit !== undefined
+      ? options.concurrencyLimit
+      : Math.max(2, Math.min(16, this.cpuCount * 2))
+
+    // 自适应并发标志
+    this.adaptiveConcurrency = options.adaptiveConcurrency !== undefined
+      ? options.adaptiveConcurrency
+      : true
 
     // 初始化冲突解决器
     this.conflictResolver = new ConflictResolver(
@@ -143,6 +158,8 @@ export class UpstreamSyncer {
   }
 
   private logStep(message: string) {
+    const stepName = `step_${this.stepCounter}`
+    this.operationTimes[stepName] = { start: performance.now() }
     logger.step(this.stepCounter++, message)
   }
 
@@ -222,6 +239,7 @@ export class UpstreamSyncer {
         await this.git.addRemote('upstream', repoUrl)
       }
       logger.success('上游仓库配置完成')
+      this.operationTimes.step_1.end = performance.now()
     }
     catch (error) {
       throw new GitError('配置上游仓库失败', error as Error)
@@ -244,6 +262,7 @@ export class UpstreamSyncer {
       async () => {
         await this.git.fetch('upstream', this.options.upstreamBranch)
         logger.success('上游更新获取完成')
+        this.operationTimes.step_2.end = performance.now()
       },
       retryConfig,
       (error) => {
@@ -259,6 +278,7 @@ export class UpstreamSyncer {
       await this.git.checkoutBranch(this.tempBranch, `upstream/${this.options.upstreamBranch}`)
       logger.success(`临时分支 ${magenta(this.tempBranch)} 创建成功`)
       this.tempResourcesCreated = true
+      this.operationTimes.step_3.end = performance.now()
     }
     catch (error) {
       throw new GitError('创建临时分支失败', error as Error)
@@ -272,8 +292,10 @@ export class UpstreamSyncer {
       // 检查临时目录和目标目录之间的差异
       const diffs: string[] = []
 
-      // 设置并行处理限制
-      const limit = pLimit(this.concurrencyLimit)
+      // 自适应调整并行限制
+      const limit = pLimit(this.adaptiveConcurrency
+        ? Math.max(2, Math.min(16, Math.floor(this.cpuCount * 1.5)))
+        : this.concurrencyLimit)
       const previewPromises: Promise<void>[] = []
 
       for (const dir of this.options.syncDirs) {
@@ -397,6 +419,7 @@ export class UpstreamSyncer {
       }
       else {
         logger.info(green('没有检测到变更'))
+        this.operationTimes.step_4.end = performance.now()
       }
     }
     catch (error) {
@@ -507,6 +530,7 @@ export class UpstreamSyncer {
       }
       else {
         logger.warn('没有目录被复制')
+        this.operationTimes.step_5.end = performance.now()
       }
     }
     catch (error) {
@@ -534,10 +558,33 @@ export class UpstreamSyncer {
 
       const entries = await fs.readdir(source, { withFileTypes: true })
 
-      // 设置并行处理限制
-      const limit = pLimit(this.concurrencyLimit)
+      // 自适应调整并行限制
+      const getDynamicLimit = (taskType: 'dir' | 'file') => {
+        if (!this.adaptiveConcurrency) {
+          return taskType === 'dir'
+            ? Math.max(1, Math.floor(this.concurrencyLimit / 2))
+            : this.concurrencyLimit
+        }
+
+        // 根据CPU核心数和任务类型动态调整
+        const baseLimit = taskType === 'dir'
+          ? Math.max(1, Math.floor(this.cpuCount * 1.5))
+          : Math.max(2, this.cpuCount * 2)
+
+        // 根据系统负载动态调整（简单实现）
+        const loadAvg = os.loadavg()[0] // 1分钟负载平均值
+        const cpuLoad = Math.min(1, loadAvg / this.cpuCount)
+        const adjustedLimit = Math.max(1, Math.floor(baseLimit * (1 - cpuLoad * 0.7)))
+
+        return adjustedLimit
+      }
+
+      // 为目录和文件分别设置不同的并行限制
+      const dirLimit = pLimit(getDynamicLimit('dir'))
+      const fileLimit = pLimit(getDynamicLimit('file'))
       const copyPromises: Promise<void>[] = []
 
+      // 优先处理目录，这样可以更快地发现需要忽略的子目录
       for (const entry of entries) {
         const sourcePath = path.join(source, entry.name)
         const destPath = path.join(destination, entry.name)
@@ -551,7 +598,7 @@ export class UpstreamSyncer {
         if (entry.isDirectory()) {
           // 递归处理子目录
           copyPromises.push(
-            limit(async () => {
+            dirLimit(async () => {
               await this.copyDirectoryWithIncremental(
                 sourcePath,
                 destPath,
@@ -561,55 +608,86 @@ export class UpstreamSyncer {
             }),
           )
         }
-        else {
-          // 检查文件类型是否应该被包含
-          if (!this.shouldIncludeFile(sourcePath)) {
-            logger.debug(`  跳过文件(类型不匹配): ${relativePath}`)
-            continue
-          }
-
-          // 增量复制文件
-          copyPromises.push(
-            limit(async () => {
-              try {
-                const currentHash = await getFileHash(sourcePath)
-                const oldHash = oldHashes[relativePath]
-
-                // 只有当文件不存在或哈希值不同时才复制
-                if (!(await fs.pathExists(destPath)) || currentHash !== oldHash) {
-                  // 检查是否为大文件
-                  if (await isLargeFile(sourcePath)) {
-                    logger.info(`  处理大文件: ${relativePath}`)
-                    // 使用分块方式复制大文件
-                    const chunks: { index: number, data: Buffer }[] = []
-                    await readFileInChunks(sourcePath, async (chunk, index) => {
-                      chunks.push({ index, data: chunk })
-                    })
-                    await writeFileInChunks(destPath, chunks)
-                  }
-                  else {
-                    // 普通文件复制
-                    await fs.copyFile(sourcePath, destPath)
-                  }
-                  if (oldHash) {
-                    logger.info(`  更新文件: ${relativePath}`)
-                  }
-                  else {
-                    logger.info(`  新增文件: ${relativePath}`)
-                  }
-                }
-              }
-              catch (error) {
-                logger.error(`处理文件 ${relativePath} 时出错:`, error as Error)
-                throw error // 重新抛出错误，确保上层能捕获
-              }
-            }),
-          )
-        }
       }
 
-      // 等待所有并行任务完成
+      // 等待目录处理完成
       await Promise.all(copyPromises)
+
+      // 重置promise数组，处理文件
+      const filePromises: Promise<void>[] = []
+
+      for (const entry of entries) {
+        if (entry.isDirectory())
+          continue
+
+        const sourcePath = path.join(source, entry.name)
+        const destPath = path.join(destination, entry.name)
+        const relativePath = path.relative(process.cwd(), sourcePath)
+
+        // 检查是否应该忽略
+        if (shouldIgnore(relativePath, ignorePatterns)) {
+          continue
+        }
+
+        // 检查文件类型是否应该被包含
+        if (!this.shouldIncludeFile(sourcePath)) {
+          logger.debug(`  跳过文件(类型不匹配): ${relativePath}`)
+          continue
+        }
+
+        // 增量复制文件
+        filePromises.push(
+          fileLimit(async () => {
+            try {
+              // 使用缓存的哈希值计算
+              const cacheKey = `hash:${sourcePath}`
+              let currentHash: string | null = (await getFromCache(cacheKey))?.toString() ?? null
+
+              if (!currentHash) {
+                const hashBuffer = Buffer.from(await getFileHash(sourcePath))
+                currentHash = hashBuffer.toString()
+                await writeToCache(cacheKey, hashBuffer)
+              }
+
+              const oldHash = oldHashes[relativePath]
+
+              // 只有当文件不存在或哈希值不同时才复制
+              if (!(await fs.pathExists(destPath)) || currentHash !== oldHash) {
+                // 检查是否为大文件
+                if (await isLargeFile(sourcePath)) {
+                  logger.info(`  处理大文件: ${relativePath}`)
+                  // 使用流式处理大文件
+                  await fs.createReadStream(sourcePath)
+                    .pipe(fs.createWriteStream(destPath))
+                    .on('error', (err) => {
+                      throw new FsError(`复制大文件 ${sourcePath} 失败`, err)
+                    })
+                    .on('finish', () => {
+                      logger.debug(`  大文件 ${relativePath} 复制完成`)
+                    })
+                }
+                else {
+                  // 普通文件复制
+                  await fs.copyFile(sourcePath, destPath)
+                }
+                if (oldHash) {
+                  logger.info(`  更新文件: ${relativePath}`)
+                }
+                else {
+                  logger.info(`  新增文件: ${relativePath}`)
+                }
+              }
+            }
+            catch (error) {
+              logger.error(`处理文件 ${relativePath} 时出错:`, error as Error)
+              throw error // 重新抛出错误，确保上层能捕获
+            }
+          }),
+        )
+      }
+
+      // 等待所有文件处理完成
+      await Promise.all(filePromises)
     }
     catch (error) {
       logger.error(`复制目录 ${source} 到 ${destination} 时出错:`, error as Error)
@@ -735,6 +813,7 @@ export class UpstreamSyncer {
       }
       else {
         logger.warn('没有目录被更新')
+        this.operationTimes.step_6.end = performance.now()
       }
     }
     catch (error) {
@@ -759,6 +838,7 @@ export class UpstreamSyncer {
       logger.info(`提交变更: ${green(this.options.commitMessage)}`)
       await this.git.commit(this.options.commitMessage)
       logger.success('变更已提交')
+      this.operationTimes.step_7.end = performance.now()
       return true
     }
     catch (error) {
@@ -784,6 +864,7 @@ export class UpstreamSyncer {
       async () => {
         await this.git.push('origin', this.options.companyBranch)
         logger.success('推送完成')
+        this.operationTimes.step_8.end = performance.now()
       },
       retryConfig,
       (error) => {
@@ -1062,7 +1143,28 @@ export class UpstreamSyncer {
         logger.info(yellow('⚠️ dry-run模式: 跳过应用变更、提交和推送操作'))
       }
 
-      logger.success(bold(green('\n✅ 同步完成!')))
+      // 记录最后一步的结束时间
+      const lastStepName = `step_${this.stepCounter - 1}`
+      if (this.operationTimes[lastStepName]) {
+        this.operationTimes[lastStepName].end = performance.now()
+      }
+
+      // 计算总执行时间
+      if (this.operationTimes.step_1) {
+        const totalTime = performance.now() - this.operationTimes.step_1.start
+        logger.info(`总执行时间: ${(totalTime / 1000).toFixed(2)}秒`)
+
+        // 输出各步骤执行时间
+        logger.info('各步骤执行时间:')
+        Object.entries(this.operationTimes).forEach(([step, times]) => {
+          if (times.end) {
+            const duration = (times.end - times.start) / 1000
+            logger.info(`${step}: ${duration.toFixed(2)}秒`)
+          }
+        })
+      }
+
+      logger.success(bold(green('✅ 同步完成!')))
       logger.info(green('='.repeat(50)))
     }
     catch (error) {

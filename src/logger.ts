@@ -12,6 +12,8 @@ export enum LogLevel {
   WARN = 'warn',
   ERROR = 'error',
   VERBOSE = 'verbose',
+  PERF = 'perf', // 性能指标日志
+  TRACE = 'trace', // 详细追踪日志
 }
 
 // 日志配置接口
@@ -21,6 +23,9 @@ export interface LoggerConfig {
   logFilePath: string
   showTimestamp: boolean
   showLevel: boolean
+  structedLogging: boolean
+  perfMetricsEnabled: boolean
+  traceEnabled: boolean
 }
 
 // 默认日志配置
@@ -30,18 +35,23 @@ const DEFAULT_CONFIG: LoggerConfig = {
   logFilePath: path.join(process.cwd(), 'sync-upstream.log'),
   showTimestamp: true,
   showLevel: true,
+  structedLogging: false,
+  perfMetricsEnabled: true,
+  traceEnabled: false,
 }
 
 export class Logger {
   private consola: ConsolaInstance
   private config: LoggerConfig
   private logLevels = [
+    LogLevel.TRACE,
     LogLevel.DEBUG,
     LogLevel.VERBOSE,
     LogLevel.INFO,
     LogLevel.SUCCESS,
     LogLevel.WARN,
     LogLevel.ERROR,
+    LogLevel.PERF,
   ]
 
   constructor(config: Partial<LoggerConfig> = {}) {
@@ -66,24 +76,43 @@ export class Logger {
   }
 
   // 记录到文件
-  private logToFile(level: LogLevel, message: string): void {
+  private logToFile(level: LogLevel, message: string, context?: Record<string, any>): void {
     if (!this.config.logToFile)
       return
 
     const timestamp = this.getTimestamp()
-    const logMessage = this.config.showLevel
-      ? `[${timestamp}] [${level.toUpperCase()}] ${message}\n`
-      : `[${timestamp}] ${message}\n`
 
-    fs.appendFile(this.config.logFilePath, logMessage)
-      .catch(error => console.error('写入日志文件失败:', error))
+    if (this.config.structedLogging) {
+      // 结构化日志格式
+      const logEntry = {
+        timestamp,
+        level: level.toUpperCase(),
+        message,
+        context: context || {},
+      }
+      const logMessage = `${JSON.stringify(logEntry)}
+`
+      fs.appendFile(this.config.logFilePath, logMessage)
+        .catch(error => console.error('写入日志文件失败:', error))
+    }
+    else {
+      // 普通文本日志格式
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      const logMessage = this.config.showLevel
+        ? `[${timestamp}] [${level.toUpperCase()}] ${message}${contextStr}\n`
+        : `[${timestamp}] ${message}${contextStr}\n`
+
+      fs.appendFile(this.config.logFilePath, logMessage)
+        .catch(error => console.error('写入日志文件失败:', error))
+    }
   }
 
   // 调试日志
-  debug(message: string): void {
+  debug(message: string, context?: Record<string, any>): void {
     if (this.logLevels.indexOf(LogLevel.DEBUG) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.debug(blue(`[DEBUG] ${message}`))
-      this.logToFile(LogLevel.DEBUG, message)
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.debug(blue(`[DEBUG] ${message}${contextStr}`))
+      this.logToFile(LogLevel.DEBUG, message, context)
     }
   }
 
@@ -95,6 +124,25 @@ export class Logger {
     }
   }
 
+  // 追踪日志
+  trace(message: string, context?: Record<string, any>): void {
+    if (this.config.traceEnabled && this.logLevels.indexOf(LogLevel.TRACE) >= this.logLevels.indexOf(this.config.level)) {
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.log(`[TRACE] ${message}${contextStr}`)
+      this.logToFile(LogLevel.TRACE, message, context)
+    }
+  }
+
+  // 性能日志
+  perf(operation: string, durationMs: number, context?: Record<string, any>): void {
+    if (this.config.perfMetricsEnabled && this.logLevels.indexOf(LogLevel.PERF) >= this.logLevels.indexOf(this.config.level)) {
+      const formattedDuration = durationMs.toFixed(2)
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.log(cyan(`[PERF] ${operation} took ${formattedDuration}ms${contextStr}`))
+      this.logToFile(LogLevel.PERF, `${operation} took ${formattedDuration}ms`, context)
+    }
+  }
+
   // 设置日志级别
   setLevel(level: LogLevel): void {
     this.config.level = level
@@ -102,40 +150,40 @@ export class Logger {
   }
 
   // 信息日志
-  info(message: string): void {
+  info(message: string, context?: Record<string, any>): void {
     if (this.logLevels.indexOf(LogLevel.INFO) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.info(cyan(`[INFO] ${message}`))
-      this.logToFile(LogLevel.INFO, message)
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.info(cyan(`[INFO] ${message}${contextStr}`))
+      this.logToFile(LogLevel.INFO, message, context)
     }
   }
 
   // 成功日志
-  success(message: string): void {
+  success(message: string, context?: Record<string, any>): void {
     if (this.logLevels.indexOf(LogLevel.SUCCESS) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.success(green(`[SUCCESS] ${message}`))
-      this.logToFile(LogLevel.SUCCESS, message)
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.success(green(`[SUCCESS] ${message}${contextStr}`))
+      this.logToFile(LogLevel.SUCCESS, message, context)
     }
   }
 
   // 警告日志
-  warn(message: string): void {
+  warn(message: string, context?: Record<string, any>): void {
     if (this.logLevels.indexOf(LogLevel.WARN) >= this.logLevels.indexOf(this.config.level)) {
-      this.consola.warn(yellow(`[WARN] ${message}`))
-      this.logToFile(LogLevel.WARN, message)
+      const contextStr = context ? ` ${JSON.stringify(context)}` : ''
+      this.consola.warn(yellow(`[WARN] ${message}${contextStr}`))
+      this.logToFile(LogLevel.WARN, message, context)
     }
   }
 
   // 错误日志
-  error(message: string, error?: Error): void {
+  error(message: string, error?: Error, context?: Record<string, any>): void {
     if (this.logLevels.indexOf(LogLevel.ERROR) >= this.logLevels.indexOf(this.config.level)) {
       const errorMessage = error ? `${message}: ${error.message}` : message
-      this.consola.error(red(`[ERROR] ${errorMessage}`))
-      this.logToFile(LogLevel.ERROR, errorMessage)
-
-      // 如果有错误堆栈，也记录下来
-      if (error?.stack) {
-        this.logToFile(LogLevel.ERROR, `Stack trace: ${error.stack}`)
-      }
+      const contextObj = { ...(context || {}), ...(error?.stack ? { stack: error.stack } : {}) }
+      const contextStr = contextObj ? ` ${JSON.stringify(contextObj)}` : ''
+      this.consola.error(red(`[ERROR] ${errorMessage}${contextStr}`))
+      this.logToFile(LogLevel.ERROR, errorMessage, contextObj)
     }
   }
 
@@ -157,6 +205,11 @@ ${stepNumber}. ${message}`))
         date: this.config.showTimestamp,
       },
     })
+
+    // 如果开启了日志文件，确保目录存在
+    if (this.config.logToFile) {
+      fs.ensureDirSync(path.dirname(this.config.logFilePath))
+    }
   }
 }
 
