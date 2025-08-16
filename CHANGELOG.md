@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-16)
+
+### ✨ Features | 新功能
+
+* 新增高级缓存系统并优化性能 ([3a97c01](https://github.com/flow-zy/sync-upstream/commit/3a97c0163292d4403dd0c78f0461ceb217cb87dd))
+
 ## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-17)
 
 ### ✨ Features | 新功能
