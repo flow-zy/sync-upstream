@@ -172,6 +172,45 @@ sync-upstream 支持多种配置项，以下是所有配置项的详细说明。
   - `'theirs'`: 使用上游仓库的代码
 - **示例**: `'theirs'`
 
+## 命令行参数配置
+
+sync-upstream 支持通过命令行参数配置所有功能，以下是可用的命令行参数：
+
+| 参数 | 别名 | 类型 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `--repo` | `-r` | `<url>` | 无 | 上游仓库 URL |
+| `--dirs` | `-d` | `<目录>` | 无 | 要同步的目录，多个目录用逗号分隔 |
+| `--branch` | `-b` | `<分支>` | `main` | 上游分支 |
+| `--company-branch` | `-c` | `<分支>` | `main` | 公司仓库分支 |
+| `--message` | `-m` | `<消息>` | `"Sync upstream changes"` | 提交消息 |
+| `--push` | `-p` | `boolean` | `false` | 自动推送变更 |
+| `--force` | `-f` | `boolean` | `true` | 强制覆盖本地文件，不使用增量复制 |
+| `--verbose` | `-V` | `boolean` | `false` | 显示详细日志信息 |
+| `--silent` | `-s` | `boolean` | `false` | 静默模式，不输出日志 |
+| `--dry-run` | `-n` | `boolean` | `false` | 试运行模式，不实际执行同步操作 |
+| `--preview-only` | `-P` | `boolean` | `false` | 预览模式，只显示变更，不实际修改文件 |
+| `--config` | `-C` | `<路径>` | `sync.config.js` | 指定配置文件路径 |
+| `--config-format` | `-F` | `<格式>` | `json` | 配置文件格式 (json, yaml, toml) |
+| `--retry-max` | `--rm` | `<次数>` | `3` | 网络请求最大重试次数 |
+| `--retry-delay` | `--rd` | `<毫秒>` | `2000` | 初始重试延迟时间 |
+| `--retry-backoff` | `--rb` | `<因子>` | `1.5` | 重试退避因子 |
+| `--concurrency` | `--cl` | `<数量>` | `5` | 并行处理的最大文件数量 |
+| `--version` | `-v` | `boolean` | 无 | 显示版本信息 |
+| `--help` | `-h` | `boolean` | 无 | 显示帮助信息 |
+| `--non-interactive` | `-y` | `boolean` | `false` | 非交互式模式，跳过所有确认提示 |
+| `--gray-release` | `-gr` | `boolean` | `false` | 启用灰度发布模式 |
+| `--full-release` | `-fr` | `boolean` | `false` | 执行全量发布 |
+| `--rollback` | `-ro` | `boolean` | `false` | 执行回滚操作 |
+| `--branch-strategy` | 无 | `<策略>` | `FEATURE` | 分支策略类型 (FEATURE, RELEASE, HOTFIX, DEVELOP) |
+| `--base-branch` | 无 | `<分支>` | `main` | 基础分支，用于创建新分支 |
+| `--branch-pattern` | 无 | `<模式>` | `feature/{name}` | 分支命名模式，支持{name}, {date}, {author}等变量 |
+| `--webhook-enable` | `-we` | `boolean` | `false` | 启用Webhook集成 |
+| `--webhook-port` | `-wp` | `<端口>` | `3000` | Webhook监听端口 |
+| `--webhook-path` | `-wpa` | `<路径>` | `/webhook` | Webhook路径 |
+| `--webhook-secret` | `-ws` | `<密钥>` | 无 | Webhook验证密钥 |
+| `--webhook-events` | `-wev` | `<事件>` | `push,pull_request` | 允许的事件类型列表，多个事件用逗号分隔 |
+| `--webhook-branch` | `-wb` | `<分支>` | `main` | 触发同步的分支 |
+
 ## 配置示例
 
 ### 完整配置示例

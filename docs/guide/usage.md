@@ -22,9 +22,13 @@ sync-upstream --non-interactive
 例如，如果您提供了仓库URL、分支和同步目录，非交互式模式将只提示网络请求重试配置和并发限制等未提供的参数：
 
 ```bash
-# 提供部分参数的非交互式模式示例
+# 提供部分参数的非交互式模式示例 (使用完整参数)
 
 sync-upstream -y --repo https://github.com/example/repo --dirs src --branch main --company-branch develop
+
+# 使用简写参数
+
+sync-upstream -y -r https://github.com/example/repo -d src -b main -c develop
 ```
 
 非交互式模式特别适用于自动化脚本或CI/CD环境中。
@@ -45,10 +49,13 @@ sync-upstream
 
 ### 指定配置文件
 
-如果您的配置文件不在默认位置，可以使用 `--config` 选项指定：
+如果您的配置文件不在默认位置，可以使用 `--config` 选项或其简写 `-C` 指定：
 
 ```bash
 sync-upstream --config=path/to/your/config.js
+# 或使用简写
+
+sync-upstream -C path/to/your/config.js
 ```
 
 ### 覆盖配置项
@@ -127,7 +134,15 @@ sync-upstream 支持灰度发布功能，可以帮助您以可控方式逐步将
 ```bash
 sync-upstream --gray-release
 # 或使用简写
+
 sync-upstream --gr
+
+# 带参数的示例
+
+sync-upstream --gr --repo https://github.com/example/repo --dirs src --branch main --company-branch company/gray
+# 或使用简写参数
+
+sync-upstream -gr -r https://github.com/example/repo -d src -b main -c company/gray
 ```
 
 启用灰度发布模式后，工具将根据配置的策略进行灰度发布。
@@ -139,7 +154,15 @@ sync-upstream --gr
 ```bash
 sync-upstream --full-release
 # 或使用简写
+
 sync-upstream --fr
+
+# 带参数的示例
+
+sync-upstream --fr --repo https://github.com/example/repo --dirs src --branch main --company-branch company/release
+# 或使用简写参数
+
+sync-upstream -fr -r https://github.com/example/repo -d src -b main -c company/release
 ```
 
 #### 执行回滚操作
@@ -149,7 +172,15 @@ sync-upstream --fr
 ```bash
 sync-upstream --rollback
 # 或使用简写
+
 sync-upstream --ro
+
+# 带参数的示例
+
+sync-upstream --ro --repo https://github.com/example/repo --dirs src --branch main --company-branch company/rollback
+# 或使用简写参数
+
+sync-upstream -ro -r https://github.com/example/repo -d src -b main -c company/rollback
 ```
 
 #### 配置文件示例

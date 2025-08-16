@@ -5,7 +5,7 @@ import toml from '@iarna/toml'
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
 import json5 from 'json5'
-import { ConflictResolutionStrategy } from './types'
+import { BranchStrategy, ConflictResolutionStrategy } from './types'
 
 const DEFAULT_CONFIG: Partial<SyncOptions> = {
   upstreamBranch: 'main',
@@ -25,6 +25,22 @@ const DEFAULT_CONFIG: Partial<SyncOptions> = {
   },
   conflictResolutionConfig: {
     defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
+  },
+  branchStrategyConfig: {
+    enable: false,
+    strategy: BranchStrategy.FEATURE,
+    baseBranch: 'main',
+    branchPattern: 'feature/{name}',
+    autoSwitchBack: true,
+    autoDeleteMergedBranches: false,
+  },
+  webhookConfig: {
+    enable: false,
+    port: 3000,
+    path: '/webhook',
+    secret: '',
+    allowedEvents: ['push'],
+    triggerBranch: 'main',
   },
 }
 
@@ -70,6 +86,27 @@ function validateConfig(config: Partial<SyncOptions>): void {
   // 验证并行限制
   if (config.concurrencyLimit !== undefined && config.concurrencyLimit < 1) {
     throw new Error('并行处理数量必须大于或等于1')
+  }
+
+  // 验证分支策略配置
+  if (config.branchStrategyConfig) {
+    const { branchStrategyConfig } = config
+
+    // 验证策略类型
+    const validStrategies = Object.values(BranchStrategy)
+    if (!validStrategies.includes(branchStrategyConfig.strategy)) {
+      throw new Error(`无效的分支策略: ${branchStrategyConfig.strategy}. 有效策略: ${validStrategies.join(', ')}`)
+    }
+
+    // 验证基础分支
+    if (!branchStrategyConfig.baseBranch || branchStrategyConfig.baseBranch.trim() === '') {
+      throw new Error('基础分支名称不能为空')
+    }
+
+    // 验证分支命名模式
+    if (!branchStrategyConfig.branchPattern || branchStrategyConfig.branchPattern.trim() === '') {
+      throw new Error('分支命名模式不能为空')
+    }
   }
 }
 

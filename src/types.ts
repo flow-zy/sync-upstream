@@ -85,6 +85,38 @@ export enum GrayReleaseStrategy {
 }
 
 /**
+ * 分支策略枚举
+ */
+export enum BranchStrategy {
+  /** 基于特性的分支策略 */
+  FEATURE = 'feature',
+  /** 基于发布的分支策略 */
+  RELEASE = 'release',
+  /** 基于修复的分支策略 */
+  HOTFIX = 'hotfix',
+  /** 基于开发的分支策略 */
+  DEVELOP = 'develop',
+}
+
+/**
+ * 分支策略配置接口
+ */
+export interface BranchStrategyConfig {
+  /** 是否启用分支策略自动化 */
+  enable: boolean
+  /** 分支策略类型 */
+  strategy: BranchStrategy
+  /** 基础分支名称，用于创建新分支 */
+  baseBranch: string
+  /** 分支命名模式，支持变量替换 {feature}, {release}, {hotfix}, {date} 等 */
+  branchPattern: string
+  /** 是否在同步完成后自动切换回原分支 */
+  autoSwitchBack: boolean
+  /** 自动删除已合并的临时分支 */
+  autoDeleteMergedBranches: boolean
+}
+
+/**
  * 灰度发布配置接口
  */
 export interface GrayReleaseConfig {
@@ -108,6 +140,24 @@ export interface GrayReleaseConfig {
   auditLogPath?: string
 }
 
+/**
+ * Webhook配置接口
+ */
+export interface WebhookConfig {
+  /** 是否启用Webhook */
+  enable: boolean
+  /** Webhook监听端口 */
+  port: number
+  /** Webhook路径 */
+  path: string
+  /** 用于验证Webhook请求的密钥 */
+  secret: string
+  /** 允许的事件类型列表 */
+  allowedEvents: string[]
+  /** 触发同步的分支 */
+  triggerBranch: string
+}
+
 export interface SyncOptions {
   upstreamRepo: string
   upstreamBranch: string
@@ -115,41 +165,20 @@ export interface SyncOptions {
   syncDirs: string[]
   commitMessage: string
   autoPush: boolean
-  forceOverwrite?: boolean
-  verbose?: boolean
-  silent?: boolean
-  dryRun?: boolean
-  retryConfig?: RetryConfig
-  /** 冲突解决配置 */
-  conflictResolutionConfig?: ConflictResolutionConfig
-  /** 要包含的文件类型列表（如 ['.ts', '.js', '.md']），为空则包含所有文件 */
-  includeFileTypes?: string[]
-  /** 同步预览功能，在实际同步前展示变更 */
-  previewOnly?: boolean
-  /** 并行处理的最大文件数量 */
-  concurrencyLimit?: number
-  /** 认证配置 */
+  forceOverwrite: boolean
+  verbose: boolean
+  silent: boolean
+  dryRun: boolean
+  previewOnly: boolean
+  nonInteractive: boolean
+  concurrencyLimit: number
+  retryConfig: RetryConfig
+  conflictResolutionConfig: ConflictResolutionConfig
   authConfig?: AuthConfig
-  /** 是否启用非交互式模式 */
-  nonInteractive?: boolean
-  /** 大文件阈值 (字节)，默认 100MB */
-  largeFileThreshold?: number
-  /** 是否使用 LFS/Git-Annex 处理大文件 */
-  useLFS?: boolean
-  /** 需要使用 LFS 跟踪的文件模式列表 */
-  lfsTrackPatterns?: string[]
-  /** 是否启用本地缓存 */
-  useCache?: boolean
-  /** 缓存目录路径 */
-  cacheDir?: string
-  /** 缓存过期时间 (天) */
-  cacheExpiryDays?: number
-  /** 灰度发布配置 */
-  grayRelease?: GrayReleaseConfig
-  /** 是否执行全量发布 */
+  grayReleaseConfig?: GrayReleaseConfig
+  includeFileTypes?: string[]
+  branchStrategyConfig?: BranchStrategyConfig
+  webhookConfig?: WebhookConfig
   fullRelease?: boolean
-  /** 是否执行回滚操作 */
   rollback?: boolean
-  /** 用户传入的未知参数 */
-  unknownParams?: Record<string, any>
 }

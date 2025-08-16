@@ -24,8 +24,8 @@ async function isGitRepository(): Promise<boolean> {
 // 解析命令行参数
 const args = minimist(process.argv.slice(2), {
   // 使用string类型并在后续代码中转换为数字
-  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
-  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'gray-release', 'full-release', 'rollback'],
+  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency', 'webhook-port', 'webhook-path', 'webhook-secret', 'webhook-events', 'webhook-branch'],
+  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'gray-release', 'full-release', 'rollback', 'webhook-enable'],
   alias: {
     r: 'repo',
     b: 'branch',
@@ -47,6 +47,15 @@ const args = minimist(process.argv.slice(2), {
     rb: 'retry-backoff',
     cl: 'concurrency',
     y: 'non-interactive',
+    gr: 'gray-release',
+    fr: 'full-release',
+    ro: 'rollback',
+    we: 'webhook-enable',
+    wp: 'webhook-port',
+    wpa: 'webhook-path',
+    ws: 'webhook-secret',
+    wev: 'webhook-events',
+    wb: 'webhook-branch',
   },
   default: {
     'branch': 'main',
@@ -65,6 +74,12 @@ const args = minimist(process.argv.slice(2), {
     'retry-delay': undefined,
     'retry-backoff': undefined,
     'concurrency': undefined,
+    'webhook-enable': false,
+    'webhook-port': '3000',
+    'webhook-path': '/webhook',
+    'webhook-secret': '',
+    'webhook-events': 'push',
+    'webhook-branch': 'main',
   },
 })
 
@@ -99,9 +114,15 @@ if (args.help) {
   console.log(green('  -v, --version           显示版本信息'))
   console.log(green('  -h, --help              显示帮助信息'))
   console.log(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示'))
-  console.log(green('  --gr, --gray-release    启用灰度发布模式'))
-  console.log(green('  --fr, --full-release    执行全量发布'))
-  console.log(green('  --ro, --rollback        执行回滚操作\n'))
+  console.log(green('  -gr, --gray-release     启用灰度发布模式'))
+  console.log(green('  -fr, --full-release     执行全量发布'))
+  console.log(green('  -ro, --rollback         执行回滚操作'))
+  console.log(green('  -we, --webhook-enable   启用Webhook功能'))
+  console.log(green('  -wp, --webhook-port     Webhook监听端口'))
+  console.log(green('  -wpa, --webhook-path    Webhook路径'))
+  console.log(green('  -ws, --webhook-secret   Webhook密钥'))
+  console.log(green('  -wev, --webhook-events  Webhook允许的事件类型'))
+  console.log(green('  -wb, --webhook-branch   Webhook触发分支\n'))
   console.log('示例:')
   console.log(bold(cyan('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')))
   console.log(`\n${yellow('如果没有提供参数，将启动交互式向导')}`)
@@ -129,6 +150,7 @@ async function run() {
     silent: args.silent,
     dryRun: args['dry-run'],
     previewOnly: args['preview-only'],
+    nonInteractive: args['non-interactive'],
     concurrencyLimit: args.concurrency ? Number.parseInt(args.concurrency, 10) : undefined,
     retryConfig: {
       maxRetries: args['retry-max'],
@@ -136,16 +158,25 @@ async function run() {
       backoffFactor: args['retry-backoff'],
     },
     // 灰度发布配置
-    grayRelease: args['gray-release'] ? {
+    grayReleaseConfig: args['gray-release'] ? {
       enable: true,
       strategy: GrayReleaseStrategy.PERCENTAGE, // 默认策略
       percentage: 100, // 默认100%
     } : undefined,
+    // Webhook配置
+    webhookConfig: args['webhook-enable']
+      ? {
+          enable: true,
+          port: Number.parseInt(args['webhook-port'], 10),
+          path: args['webhook-path'],
+          secret: args['webhook-secret'],
+          allowedEvents: args['webhook-events'].split(',').map((event: string) => event.trim()),
+          triggerBranch: args['webhook-branch'],
+        }
+      : undefined,
     // 全量发布和回滚标记
     fullRelease: args['full-release'],
     rollback: args.rollback,
-    // 记录传入的未知参数，以便后续处理
-    unknownParams: Object.keys(args).filter(key => !['_', 'repo', 'r', 'branch', 'b', 'company-branch', 'c', 'dirs', 'd', 'message', 'm', 'push', 'p', 'force', 'f', 'verbose', 'V', 'silent', 's', 'dry-run', 'n', 'preview-only', 'P', 'config', 'C', 'config-format', 'F', 'retry-max', 'rm', 'retry-delay', 'rd', 'retry-backoff', 'rb', 'concurrency', 'cl', 'non-interactive', 'y', 'gray-release', 'gr', 'full-release', 'fr', 'rollback', 'ro', 'help', 'h', 'version', 'v'].includes(key)).reduce((obj, key) => ({ ...obj, [key]: args[key] }), {}),
   }
 
   // 加载配置文件
@@ -179,14 +210,15 @@ async function run() {
   const actualNonInteractive = nonInteractive && !forceInteractive
 
   // 检查是否有未知参数
-  if (mergedOptions.unknownParams && Object.keys(mergedOptions.unknownParams).length > 0) {
-    console.error(red('错误: 检测到未知的配置项:'), Object.keys(mergedOptions.unknownParams).join(', '))
+  const unknownParams = Object.keys(args).filter(key => !['_', 'repo', 'r', 'branch', 'b', 'company-branch', 'c', 'dirs', 'd', 'message', 'm', 'push', 'p', 'force', 'f', 'verbose', 'V', 'silent', 's', 'dry-run', 'n', 'preview-only', 'P', 'config', 'C', 'config-format', 'F', 'retry-max', 'rm', 'retry-delay', 'rd', 'retry-backoff', 'rb', 'concurrency', 'cl', 'non-interactive', 'y', 'gray-release', 'gr', 'full-release', 'fr', 'rollback', 'ro', 'help', 'h', 'version', 'v', 'webhook-enable', 'webhook-port', 'webhook-path', 'webhook-secret', 'webhook-events', 'webhook-branch', 'we', 'wp', 'wpa', 'ws', 'wev', 'wb'].includes(key))
+  if (unknownParams.length > 0) {
+    console.error(red('错误: 检测到未知的配置项:'), unknownParams.join(', '))
     console.error(yellow('请使用 --help 查看所有可用的配置项'))
     process.exit(1)
   }
 
   // 启动交互式提示
-  const options = await promptForOptions(mergedOptions, actualNonInteractive)
+  const options = await promptForOptions(mergedOptions, actualNonInteractive) as SyncOptions
 
   try {
     const syncer = new UpstreamSyncer(options)

@@ -6,8 +6,8 @@ import fs from 'fs-extra'
 import pLimit from 'p-limit'
 import { blue, bold, cyan, green, magenta, yellow } from 'picocolors'
 import prompts from 'prompts'
-
 import simpleGit from 'simple-git'
+
 import { initializeCache } from './cache'
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
@@ -15,11 +15,12 @@ import { GrayReleaseManager } from './grayRelease'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
 import { isLargeFile, readFileInChunks, writeFileInChunks } from './lfs'
-
 import { logger, LogLevel } from './logger'
+
 import { displaySummary } from './prompts'
 import { withRetry } from './retry'
-import { AuthType } from './types'
+import { AuthType, BranchStrategy } from './types'
+
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
   private total: number
@@ -61,6 +62,8 @@ export class UpstreamSyncer {
   private conflictResolver: ConflictResolver
   private tempResourcesCreated: boolean = false
   private grayReleaseManager: GrayReleaseManager
+  private originalBranch: string = ''
+  private strategyBranch: string = ''
 
   constructor(private options: SyncOptions) {
     this.grayReleaseManager = new GrayReleaseManager(options)
@@ -802,7 +805,9 @@ export class UpstreamSyncer {
     // 清理临时分支
     if (this.tempBranch) {
       try {
-        await this.git.checkout(this.options.companyBranch)
+        // 先切换到一个不是临时分支的分支
+        const targetBranch = this.originalBranch || this.options.companyBranch
+        await this.git.checkout(targetBranch)
         try {
           await this.git.deleteLocalBranch(this.tempBranch)
           logger.success('临时分支已删除')
@@ -820,6 +825,9 @@ export class UpstreamSyncer {
         }
       }
     }
+
+    // 清理分支策略相关资源
+    await this.cleanupBranchStrategy()
 
     // 清理临时目录
     try {
@@ -876,6 +884,127 @@ export class UpstreamSyncer {
     logger.success('回滚操作完成')
   }
 
+  /**
+   * 设置分支策略
+   */
+  private async setupBranchStrategy(): Promise<void> {
+    if (!this.options.branchStrategyConfig?.enable) {
+      return
+    }
+
+    const { branchStrategyConfig } = this.options
+    this.logStep(`设置分支策略: ${branchStrategyConfig.strategy}`)
+
+    try {
+      // 保存当前分支
+      this.originalBranch = await this.git.revparse(['--abbrev-ref', 'HEAD'])
+      logger.info(`当前分支: ${this.originalBranch}`)
+
+      // 生成策略分支名称
+      this.strategyBranch = this.generateBranchName(branchStrategyConfig)
+      logger.info(`生成策略分支: ${this.strategyBranch}`)
+
+      // 检查分支是否已存在
+      const branches = await this.git.branch(['--list', this.strategyBranch])
+      if (branches.all.includes(this.strategyBranch)) {
+        logger.info(`分支 ${this.strategyBranch} 已存在，切换到该分支`)
+        await this.git.checkout(this.strategyBranch)
+      }
+      else {
+        logger.info(`创建新分支 ${this.strategyBranch} 基于 ${branchStrategyConfig.baseBranch}`)
+        await this.git.checkoutBranch(this.strategyBranch, branchStrategyConfig.baseBranch)
+      }
+    }
+    catch (error) {
+      throw new GitError('设置分支策略失败', error as Error)
+    }
+  }
+
+  /**
+   * 生成分支名称
+   */
+  private generateBranchName(config: any): string {
+    const { strategy, branchPattern } = config
+    let branchName = branchPattern
+
+    // 替换变量
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    branchName = branchName.replace(/\{date\}/g, date)
+
+    switch (strategy) {
+      case BranchStrategy.FEATURE:
+        // 可以从配置或环境变量中获取特性名称
+        const featureName = process.env.FEATURE_NAME || 'feature'
+        branchName = branchName.replace(/\{feature\}/g, featureName)
+        break
+      case BranchStrategy.RELEASE:
+        const releaseVersion = process.env.RELEASE_VERSION || '1.0.0'
+        branchName = branchName.replace(/\{release\}/g, releaseVersion)
+        break
+      case BranchStrategy.HOTFIX:
+        const hotfixVersion = process.env.HOTFIX_VERSION || '1.0.1'
+        branchName = branchName.replace(/\{hotfix\}/g, hotfixVersion)
+        break
+      case BranchStrategy.DEVELOP:
+        branchName = branchName.replace(/\{develop\}/g, 'develop')
+        break
+    }
+
+    return branchName
+  }
+
+  /**
+   * 清理分支策略相关资源
+   */
+  private async cleanupBranchStrategy(): Promise<void> {
+    if (!this.options.branchStrategyConfig?.enable) {
+      return
+    }
+
+    const { branchStrategyConfig } = this.options
+
+    // 如果需要自动切换回原分支
+    if (branchStrategyConfig.autoSwitchBack && this.originalBranch) {
+      try {
+        logger.info(`切换回原分支: ${this.originalBranch}`)
+        await this.git.checkout(this.originalBranch)
+      }
+      catch (error) {
+        logger.warn(`切换回原分支失败: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+
+    // 如果需要自动删除已合并的分支
+    if (branchStrategyConfig.autoDeleteMergedBranches && this.strategyBranch) {
+      try {
+        // 检查分支是否已合并
+        const isMerged = await this.isBranchMerged(this.strategyBranch, branchStrategyConfig.baseBranch)
+        if (isMerged) {
+          logger.info(`删除已合并的分支: ${this.strategyBranch}`)
+          await this.git.deleteLocalBranch(this.strategyBranch)
+        }
+      }
+      catch (error) {
+        logger.warn(`删除分支失败: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  }
+
+  /**
+   * 检查分支是否已合并到目标分支
+   */
+  private async isBranchMerged(branch: string, targetBranch: string): Promise<boolean> {
+    try {
+      const mergeBase = await this.git.raw(['merge-base', targetBranch, branch])
+      const branchHead = await this.git.raw(['rev-parse', branch])
+      return mergeBase.trim() === branchHead.trim()
+    }
+    catch (error) {
+      logger.error(`检查分支是否合并失败: ${error instanceof Error ? error.message : String(error)}`)
+      return false
+    }
+  }
+
   public async run(): Promise<void> {
     try {
       logger.info(bold(blue('╔════════════════════════════════════════════╗')))
@@ -906,6 +1035,10 @@ export class UpstreamSyncer {
       // 执行同步流程
       await this.setupUpstream()
       await this.fetchUpstream()
+
+      // 应用分支策略
+      await this.setupBranchStrategy()
+
       await this.createTempBranch()
       await this.copyDirectories()
       await this.previewChanges()
