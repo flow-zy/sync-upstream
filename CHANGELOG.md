@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/flow-zy/sync-upstream/compare/v0.2.3...v0.2.4) (2025-08-16)
+
+### ✨ Features | 新功能
+
+* **config:** 添加对JSON5配置文件格式的支持 ([8f3399b](https://github.com/flow-zy/sync-upstream/commit/8f3399b8ada952f3badaab02185738341cbb575e))
+* **webhook:** 实现Webhook集成功能并添加分支策略支持 ([e7f4076](https://github.com/flow-zy/sync-upstream/commit/e7f40763fd4a534bacbd401d9cabb85cb9f441f9))
+
 ## [0.2.3](https://github.com/flow-zy/sync-upstream/compare/v0.2.1...v0.2.3) (2025-08-15)
 
 ### ✨ Features | 新功能
