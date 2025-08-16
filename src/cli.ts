@@ -201,8 +201,12 @@ async function run() {
           port: Number.parseInt(args['webhook-port'], 10),
           path: args['webhook-path'],
           secret: args['webhook-secret'],
+          supportedPlatforms: ['github'], // 默认支持GitHub
           allowedEvents: args['webhook-events'].split(',').map((event: string) => event.trim()),
           triggerBranch: args['webhook-branch'],
+          retryConfig: { maxRetries: 3, initialDelay: 1000, backoffFactor: 2 },
+          securityConfig: { ipWhitelist: [], rateLimit: { maxRequestsPerSecond: 10, statusCode: 429, message: 'Too many requests' } },
+          eventFilterConfig: { rules: [] },
         }
       : undefined,
     // 全量发布和回滚标记
