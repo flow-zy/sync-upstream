@@ -14,9 +14,18 @@ let cachedConfig: any = null
 // 默认缓存配置
 const DEFAULT_CACHE_CONFIG = {
   expiryMs: 7 * 24 * 60 * 60 * 1000, // 7天
-  maxSizeBytes: 512 * 1024 * 1024, // 512MB
+  maxSizeBytes: 5 * 1024 * 1024 * 1024, // 5GB
   lruEnabled: true,
   lruMaxEntries: 1000,
+  // 按内容类型设置的过期时间（毫秒）
+  typeBasedExpiry: {
+    html: 60 * 60 * 1000, // 1小时
+    json: 24 * 60 * 60 * 1000, // 1天
+    binary: 7 * 24 * 60 * 60 * 1000, // 7天
+    image: 30 * 24 * 60 * 60 * 1000, // 30天
+  },
+  // 缓存键前缀，用于多项目共享缓存
+  keyPrefix: '',
 }
 
 // 缓存元数据文件
@@ -116,17 +125,37 @@ export async function initializeCache(): Promise<void> {
  * 生成缓存键
  * @param url 请求URL
  * @param params 请求参数
+ * @param options 可选配置
  * @returns 缓存键
  */
-export function generateCacheKey(url: string, params: Record<string, any> = {}): string {
+export function generateCacheKey(
+  url: string,
+  params: Record<string, any> = {},
+  options: { contentType?: string, customPrefix?: string } = {},
+): string {
   // 将参数排序后字符串化，以确保相同参数生成相同的键
   const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
     acc[key] = params[key]
     return acc
   }, {} as Record<string, any>)
 
-  const keyString = `${url}${JSON.stringify(sortedParams)}`
-  return crypto.createHash('md5').update(keyString).digest('hex')
+  // 构建键字符串
+  let keyString = `${url}${JSON.stringify(sortedParams)}`
+
+  // 如果提供了内容类型，添加到键中
+  if (options.contentType) {
+    keyString += `|type:${options.contentType}`
+  }
+
+  // 计算哈希
+  const hash = crypto.createHash('md5').update(keyString).digest('hex')
+
+  // 获取配置中的前缀
+  const config = getCacheConfig()
+  const prefix = options.customPrefix || config.keyPrefix
+
+  // 返回带前缀的缓存键
+  return prefix ? `${prefix}:${hash}` : hash
 }
 
 /**
@@ -227,9 +256,13 @@ function formatBytes(bytes: number): string {
 /**
  * 检查缓存是否存在且有效
  * @param cacheKey 缓存键
+ * @param options 可选配置，包含contentType用于指定内容类型
  * @returns 缓存是否有效
  */
-export async function isCacheValid(cacheKey: string): Promise<boolean> {
+export async function isCacheValid(
+  cacheKey: string,
+  options: { contentType?: string } = {}
+): Promise<boolean> {
   const cachePath = path.join(CACHE_DIR, cacheKey)
   const config = getCacheConfig()
 
@@ -241,8 +274,21 @@ export async function isCacheValid(cacheKey: string): Promise<boolean> {
     const stats = await fs.stat(cachePath)
     const now = Date.now()
 
+    // 确定使用的过期时间
+    let expiryMs = config.expiryMs
+    const contentType = options.contentType
+    
+    // 如果提供了内容类型，尝试使用对应的过期时间
+    if (contentType && config.typeBasedExpiry) {
+      const typeExpiry = config.typeBasedExpiry[contentType]
+      if (typeExpiry !== undefined) {
+        expiryMs = typeExpiry
+        logger.debug(`使用内容类型 ${contentType} 的过期时间: ${expiryMs}ms`)
+      }
+    }
+
     // 检查缓存是否过期
-    if (now - stats.mtimeMs > config.expiryMs) {
+    if (now - stats.mtimeMs > expiryMs) {
       logger.info(`缓存 ${cacheKey} 已过期，将删除`)
       await fs.remove(cachePath)
       lruMap.delete(cacheKey)
@@ -265,11 +311,15 @@ export async function isCacheValid(cacheKey: string): Promise<boolean> {
 /**
  * 从缓存中获取数据
  * @param cacheKey 缓存键
+ * @param options 可选配置，包含contentType用于指定内容类型
  * @returns 缓存的数据，如果缓存不存在或无效则返回null
  */
-export async function getFromCache(cacheKey: string): Promise<Buffer | null> {
+export async function getFromCache(
+  cacheKey: string,
+  options: { contentType?: string } = {}
+): Promise<Buffer | null> {
   try {
-    if (!(await isCacheValid(cacheKey))) {
+    if (!(await isCacheValid(cacheKey, options))) {
       cacheStats.misses++
       await saveCacheMetadata()
       return null
@@ -392,6 +442,7 @@ export async function cleanupExpiredCache(): Promise<void> {
  * @param url 请求URL
  * @param fetchFunction 获取数据的函数
  * @param params 请求参数
+ * @param options 可选配置，包含contentType用于指定内容类型
  * @param retryConfig 重试配置
  * @returns 请求的数据
  */
@@ -399,6 +450,7 @@ export async function cachedFetch(
   url: string,
   fetchFunction: () => Promise<Buffer>,
   params: Record<string, any> = {},
+  options: { contentType?: string, customPrefix?: string } = {},
   retryConfig?: RetryConfig,
 ): Promise<Buffer> {
   try {
@@ -406,10 +458,10 @@ export async function cachedFetch(
     await initializeCache()
 
     // 生成缓存键
-    const cacheKey = generateCacheKey(url, params)
+    const cacheKey = generateCacheKey(url, params, options)
 
     // 尝试从缓存获取
-    const cachedData = await getFromCache(cacheKey)
+    const cachedData = await getFromCache(cacheKey, { contentType: options.contentType })
     if (cachedData) {
       return cachedData
     }
