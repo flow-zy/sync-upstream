@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6](https://github.com/flow-zy/sync-upstream/compare/v0.2.5...v0.2.6) (2025-08-17)
+
+### ✨ Features | 新功能
+
+* **cache:** 添加缓存压缩和预热功能 ([d4c0876](https://github.com/flow-zy/sync-upstream/commit/d4c08761f851976e789d4fd596c1cd8f8a86edf9))
+* **cache:** 增加基于内容类型的缓存过期时间和键前缀支持 ([bc14bf3](https://github.com/flow-zy/sync-upstream/commit/bc14bf366234d807239cf7adbca3e5cd781361fb))
+* **webhook:** 增强webhook功能并添加安全配置 ([6b0ef87](https://github.com/flow-zy/sync-upstream/commit/6b0ef87c22d00e292ded9c165bcd0e2c04d89f7e))
+
 ## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-16)
 
 ### ✨ Features | 新功能
