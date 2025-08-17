@@ -10,6 +10,14 @@ import { withRetry } from './retry'
 const CACHE_DIR = path.join(process.cwd(), '.sync-cache')
 // 缓存的配置
 let cachedConfig: any = null
+// 缓存初始化状态
+let isCacheInitialized = false
+// 缓存预热状态
+let isCacheWarmedUp = false
+// 缓存统计信息更新时间
+let lastStatsUpdateTime = 0
+// 缓存清理间隔 (毫秒)
+const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000 // 5分钟
 
 // 默认缓存配置
 const DEFAULT_CACHE_CONFIG = {
@@ -26,6 +34,13 @@ const DEFAULT_CACHE_CONFIG = {
   },
   // 缓存键前缀，用于多项目共享缓存
   keyPrefix: '',
+  // 缓存压缩配置
+  compressEnabled: true,
+  compressionLevel: 6,
+  compressionThreshold: 10240, // 10KB
+  // 缓存预热配置
+  warmupEnabled: false,
+  warmupKeys: [],
 }
 
 // 缓存元数据文件
@@ -102,6 +117,11 @@ async function loadCacheMetadata() {
  * 初始化缓存目录
  */
 export async function initializeCache(): Promise<void> {
+  if (isCacheInitialized) {
+    logger.debug('缓存已经初始化，跳过初始化步骤')
+    return
+  }
+
   try {
     // 加载配置
     cachedConfig = await loadConfig()
@@ -114,10 +134,93 @@ export async function initializeCache(): Promise<void> {
     await cleanupExpiredCache()
     // 检查缓存大小限制
     await checkCacheSizeLimit()
+
+    // 标记缓存为已初始化
+    isCacheInitialized = true
+
+    // 启动定期清理任务
+    startPeriodicCleanup()
+
+    // 如果配置了预热，则执行缓存预热
+    const config = getCacheConfig()
+    if (config.warmupEnabled) {
+      logger.info('开始缓存预热...')
+      await warmupCache()
+    }
   }
   catch (error) {
     logger.error(`初始化缓存目录失败: ${error instanceof Error ? error.message : String(error)}`)
     throw error
+  }
+}
+
+/**
+ * 启动定期清理任务
+ */
+function startPeriodicCleanup() {
+  setInterval(async () => {
+    try {
+      logger.debug('执行定期缓存清理...')
+      await cleanupExpiredCache()
+      await checkCacheSizeLimit()
+    } catch (error) {
+      logger.error(`定期清理缓存失败: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }, CACHE_CLEANUP_INTERVAL)
+  logger.info(`定期缓存清理已启动，间隔: ${CACHE_CLEANUP_INTERVAL / 1000 / 60}分钟`)
+}
+
+/**
+ * 缓存预热
+ */
+async function warmupCache(): Promise<void> {
+  try {
+    const config = getCacheConfig()
+    const { warmupKeys } = config
+    const totalKeys = warmupKeys.length
+
+    if (totalKeys === 0) {
+      logger.info('没有配置预热键，跳过缓存预热')
+      isCacheWarmedUp = true
+      return
+    }
+
+    logger.info(`开始缓存预热，共 ${totalKeys} 个键`)
+    let successCount = 0
+    let failCount = 0
+
+    // 并发预热，但限制并发数
+    const concurrencyLimit = Math.min(5, totalKeys)
+    const chunks = []
+    for (let i = 0; i < totalKeys; i += concurrencyLimit) {
+      chunks.push(warmupKeys.slice(i, i + concurrencyLimit))
+    }
+
+    for (const chunk of chunks) {
+      const promises = chunk.map(async (key) => {
+        try {
+          // 这里假设我们有一个函数可以获取要预热的数据
+          // 在实际应用中，这可能需要从API、数据库或文件系统获取数据
+          logger.debug(`预热缓存键: ${key}`)
+          // 注意：这里只是模拟预热过程
+          // 实际应用中应该替换为真正的数据源获取逻辑
+          const dummyData = Buffer.from(`Warmed up data for key: ${key}`)
+          await writeToCache(key, dummyData)
+          successCount++
+        } catch (error) {
+          logger.error(`预热缓存键 ${key} 失败: ${error instanceof Error ? error.message : String(error)}`)
+          failCount++
+        }
+      })
+
+      await Promise.all(promises)
+    }
+
+    isCacheWarmedUp = true
+    logger.success(`缓存预热完成: 成功 ${successCount} 个, 失败 ${failCount} 个`)
+  } catch (error) {
+    logger.error(`缓存预热失败: ${error instanceof Error ? error.message : String(error)}`)
+    isCacheWarmedUp = false
   }
 }
 
@@ -131,7 +234,13 @@ export async function initializeCache(): Promise<void> {
 export function generateCacheKey(
   url: string,
   params: Record<string, any> = {},
-  options: { contentType?: string, customPrefix?: string } = {},
+  options: { 
+    contentType?: string,
+    customPrefix?: string,
+    hashAlgorithm?: 'md5' | 'sha1' | 'sha256',
+    includeTimestamp?: boolean,
+    timestampTtl?: number
+  } = {},
 ): string {
   // 将参数排序后字符串化，以确保相同参数生成相同的键
   const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
@@ -147,15 +256,23 @@ export function generateCacheKey(
     keyString += `|type:${options.contentType}`
   }
 
+  // 如果需要包含时间戳，添加到键中
+  if (options.includeTimestamp) {
+    const ttl = options.timestampTtl || 3600000; // 默认1小时
+    const timestamp = Math.floor(Date.now() / ttl) * ttl;
+    keyString += `|ts:${timestamp}`;
+  }
+
   // 计算哈希
-  const hash = crypto.createHash('md5').update(keyString).digest('hex')
+  const algorithm = options.hashAlgorithm || 'md5';
+  const hash = crypto.createHash(algorithm).update(keyString).digest('hex')
 
   // 获取配置中的前缀
   const config = getCacheConfig()
   const prefix = options.customPrefix || config.keyPrefix
 
   // 返回带前缀的缓存键
-  return prefix ? `${prefix}:${hash}` : hash
+  return prefix ? `${prefix}:${algorithm}:${hash}` : `${algorithm}:${hash}`
 }
 
 /**
@@ -311,25 +428,47 @@ export async function isCacheValid(
 /**
  * 从缓存中获取数据
  * @param cacheKey 缓存键
- * @param options 可选配置，包含contentType用于指定内容类型
+ * @param options 可选配置，包含contentType用于指定内容类型和decompress用于控制解压缩
  * @returns 缓存的数据，如果缓存不存在或无效则返回null
  */
 export async function getFromCache(
   cacheKey: string,
-  options: { contentType?: string } = {}
+  options: { contentType?: string, decompress?: boolean } = {} 
 ): Promise<Buffer | null> {
   try {
     if (!(await isCacheValid(cacheKey, options))) {
       cacheStats.misses++
-      await saveCacheMetadata()
+      await updateCacheStats()
       return null
     }
 
     const cachePath = path.join(CACHE_DIR, cacheKey)
-    const data = await fs.readFile(cachePath)
+    // 检查是否为压缩数据
+    const isCompressed = await fs.pathExists(`${cachePath}.compressed`)
+    let data = await fs.readFile(cachePath)
+
+    // 如果是压缩数据且启用了解压缩
+    if (isCompressed && options.decompress !== false) {
+      try {
+        // 动态导入zlib模块
+        const zlib = await import('node:zlib')
+        data = await new Promise<Buffer>((resolve, reject) => {
+          zlib.gunzip(data, (err, result) => {
+            if (err) reject(err)
+            else resolve(result)
+          })
+        })
+        logger.debug(`缓存数据已解压缩: ${cacheKey}`)
+      } catch (error) {
+        logger.error(`解压缩缓存数据失败: ${error instanceof Error ? error.message : String(error)}`)
+        // 解压缩失败，返回原始数据
+        return data
+      }
+    }
+
     cacheStats.hits++
-    logger.info(`从缓存获取数据: ${cacheKey} (命中: ${cacheStats.hits}, 未命中: ${cacheStats.misses})`)
-    await saveCacheMetadata()
+    logger.info(`从缓存获取数据: ${cacheKey} (命中: ${cacheStats.hits}, 未命中: ${cacheStats.misses})${isCompressed ? ' (已压缩)' : ''}`)
+    await updateCacheStats()
     return data
   }
   catch (error) {
@@ -339,43 +478,95 @@ export async function getFromCache(
 }
 
 /**
+ * 更新缓存统计信息
+ * 定期写入磁盘，避免频繁IO操作
+ */
+async function updateCacheStats(): Promise<void> {
+  const now = Date.now()
+  // 如果距离上次更新已经超过1秒，或者命中/未命中等于0（初始化状态）
+  if (now - lastStatsUpdateTime > 1000 || (cacheStats.hits === 0 && cacheStats.misses === 0)) {
+    await saveCacheMetadata()
+    lastStatsUpdateTime = now
+  }
+}
+
+/**
  * 将数据写入缓存
  * @param cacheKey 缓存键
  * @param data 要缓存的数据
  * @param retryConfig 重试配置
+ * @param options 可选配置
  */
 export async function writeToCache(
   cacheKey: string,
   data: Buffer,
   retryConfig?: RetryConfig,
+  options: { compress?: boolean, compressionLevel?: number } = {} 
 ): Promise<void> {
   try {
     const cachePath = path.join(CACHE_DIR, cacheKey)
     const config = getCacheConfig()
+    const shouldCompress = options.compress !== undefined ? options.compress : config.compressEnabled
+    const compressionLevel = options.compressionLevel || config.compressionLevel || 6
+
+    // 准备要写入的数据
+    let dataToWrite = data
+    let isCompressed = false
+
+    // 如果启用压缩
+    if (shouldCompress && data.length > config.compressionThreshold) {
+      try {
+        // 动态导入zlib模块
+        const zlib = await import('node:zlib')
+        dataToWrite = await new Promise<Buffer>((resolve, reject) => {
+          zlib.gzip(data, { level: compressionLevel }, (err, result) => {
+            if (err) reject(err)
+            else resolve(result)
+          })
+        })
+        isCompressed = true
+        logger.debug(`缓存数据已压缩: ${formatBytes(data.length)} -> ${formatBytes(dataToWrite.length)}`)
+      } catch (error) {
+        logger.warn(`压缩缓存数据失败，将使用原始数据: ${error instanceof Error ? error.message : String(error)}`)
+        isCompressed = false
+      }
+    }
 
     await withRetry(
       async () => {
-        await fs.writeFile(cachePath, data)
+        // 写入数据
+        await fs.writeFile(cachePath, dataToWrite)
+        // 写入压缩标志文件
+        if (isCompressed) {
+          await fs.writeFile(`${cachePath}.compressed`, '1')
+        } else if (await fs.pathExists(`${cachePath}.compressed`)) {
+          await fs.remove(`${cachePath}.compressed`)
+        }
+
         // 更新缓存统计信息
         const stats = await fs.stat(cachePath)
         // 如果是更新现有缓存，先减去旧大小
         if (lruMap.has(cacheKey)) {
-          const oldStats = await fs.stat(cachePath)
-          cacheStats.totalSize -= oldStats.size
+          try {
+            const oldStats = await fs.stat(cachePath)
+            cacheStats.totalSize -= oldStats.size
+          } catch (error) {
+            logger.warn(`获取旧缓存大小失败: ${error instanceof Error ? error.message : String(error)}`)
+          }
         }
         cacheStats.totalSize += stats.size
         cacheStats.misses++ // 写入缓存通常是因为未命中
         // 更新LRU映射
         updateLruMap(cacheKey)
-        logger.info(`数据已写入缓存: ${cacheKey} (大小: ${formatBytes(stats.size)})`)
+        logger.info(`数据已写入缓存: ${cacheKey} (大小: ${formatBytes(stats.size)}${isCompressed ? ', 已压缩' : ''})`)
         // 检查缓存大小限制
         await checkCacheSizeLimit()
-        // 保存元数据
-        await saveCacheMetadata()
+        // 更新缓存统计信息
+        await updateCacheStats()
       },
       retryConfig || { maxRetries: 3, initialDelay: 1000, backoffFactor: 2 },
     )
-  }
+  } 
   catch (error) {
     logger.error(`写入缓存失败: ${error instanceof Error ? error.message : String(error)}`)
     // 缓存失败不应阻止主流程

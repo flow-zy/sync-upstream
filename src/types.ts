@@ -247,6 +247,12 @@ export interface CacheConfig {
   lruEnabled?: boolean
   /** LRU缓存最大条目数 */
   lruMaxEntries?: number
+  /** 是否启用缓存压缩 */
+  compressEnabled?: boolean
+  /** 压缩级别 (1-9) */
+  compressionLevel?: number
+  /** 启用压缩的最小文件大小（字节） */
+  compressionThreshold?: number
 }
 
 /**

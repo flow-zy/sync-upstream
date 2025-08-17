@@ -406,48 +406,7 @@ export class ConflictResolver {
     }
   }
 
-  /**
-   * 解决内容冲突
-   */
-  private async resolveContentConflict(
-    conflict: ConflictInfo,
-    strategy: ConflictResolutionStrategy,
-    options: { autoMergeDepth?: number },
-  ): Promise<boolean> {
-    const { autoMergeDepth = 3 } = options
 
-    switch (strategy) {
-      case ConflictResolutionStrategy.USE_SOURCE:
-        await fs.copyFile(conflict.sourcePath, conflict.targetPath)
-        logger.success(`使用源文件覆盖目标文件: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`保留目标文件: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.AUTO_MERGE:
-        try {
-          // 尝试自动合并文件内容
-          const success = await this.autoMergeFiles(conflict.sourcePath, conflict.targetPath, autoMergeDepth)
-          if (success) {
-            logger.success(`自动合并成功: ${green(conflict.targetPath)}`)
-            return true
-          }
-          else {
-            logger.warn(`自动合并失败，将提示用户解决`)
-            // 降级为提示用户
-            return await this.promptUserForConflictResolution(conflict)
-          }
-        }
-        catch (error) {
-          logger.error(`自动合并失败: ${error instanceof Error ? error.message : String(error)}`)
-          // 降级为提示用户
-          return await this.promptUserForConflictResolution(conflict)
-        }
-      case ConflictResolutionStrategy.PROMPT_USER:
-      default:
-        return await this.promptUserForConflictResolution(conflict)
-    }
-  }
 
   /**
    * 自动合并文件内容
@@ -545,62 +504,9 @@ export class ConflictResolver {
     }
   }
 
-  /**
-   * 解决类型冲突
-   */
-  private async resolveTypeConflict(
-    conflict: ConflictInfo,
-    strategy: ConflictResolutionStrategy,
-  ): Promise<boolean> {
-    switch (strategy) {
-      case ConflictResolutionStrategy.USE_SOURCE:
-        // 删除目标，然后复制源
-        if (await fs.pathExists(conflict.targetPath)) {
-          if ((await fs.stat(conflict.targetPath)).isDirectory()) {
-            await fs.remove(conflict.targetPath)
-          }
-          else {
-            await fs.unlink(conflict.targetPath)
-          }
-        }
-        if ((await fs.stat(conflict.sourcePath)).isDirectory()) {
-          await fs.copy(conflict.sourcePath, conflict.targetPath)
-        }
-        else {
-          await fs.copyFile(conflict.sourcePath, conflict.targetPath)
-        }
-        logger.success(`使用源文件/目录覆盖目标: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`保留目标文件/目录: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.PROMPT_USER:
-      default:
-        return await this.promptUserForConflictResolution(conflict)
-    }
-  }
 
-  /**
-   * 解决重命名冲突
-   */
-  private async resolveRenameConflict(
-    conflict: ConflictInfo,
-    strategy: ConflictResolutionStrategy,
-  ): Promise<boolean> {
-    // 简化实现，实际应用中需要知道原始名称和新名称
-    switch (strategy) {
-      case ConflictResolutionStrategy.USE_SOURCE:
-        await fs.copyFile(conflict.sourcePath, conflict.targetPath)
-        logger.success(`使用源文件覆盖目标文件: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.KEEP_TARGET:
-        logger.info(`保留目标文件: ${green(conflict.targetPath)}`)
-        return true
-      case ConflictResolutionStrategy.PROMPT_USER:
-      default:
-        return await this.promptUserForConflictResolution(conflict)
-    }
-  }
+
+
 
   /**
    * 解决版本冲突
@@ -768,7 +674,7 @@ export class ConflictResolver {
     conflict: ConflictInfo,
     strategy: ConflictResolutionStrategy,
   ): Promise<boolean> {
-    // 实现内容冲突解决逻辑
+    // 保留新的实现
     let resolved = false
     const fileExtension = path.extname(conflict.sourcePath).toLowerCase()
     const isAutoResolveType = this.config.autoResolveTypes?.includes(fileExtension) || false
