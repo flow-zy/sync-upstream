@@ -121,7 +121,7 @@ export abstract class SyncError extends Error {
         logger.error(JSON.stringify(errorData))
         break
       case ErrorSeverity.CRITICAL:
-        logger.error(bold(red)(JSON.stringify(errorData)))
+        logger.error(bold(red(JSON.stringify(errorData))))
         break
     }
   }

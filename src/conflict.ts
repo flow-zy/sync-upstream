@@ -1,45 +1,30 @@
 import path from 'node:path'
 import fs from 'fs-extra'
-import { yellow } from 'picocolors'
+import { blue, green, red, yellow } from 'picocolors'
 import prompts from 'prompts'
-import { FsError } from './errors'
+import { FsError, UserCancelError } from './errors'
 import { getFileHash } from './hash'
 import { shouldIgnore } from './ignore'
 import { logger } from './logger'
 import { ConflictResolutionStrategy, ConflictType } from './types'
 
-/**
- * 冲突类型枚举
- */
-export enum ConflictType {
-  /** 文件内容冲突 */
-  CONTENT = 'content',
-  /** 文件类型冲突（一个是文件，一个是目录） */
-  TYPE = 'type',
-  /** 重命名冲突 */
-  RENAME = 'rename',
-  /** 版本冲突 */
-  VERSION = 'version',
-  /** 权限冲突 */
-  PERMISSION = 'permission',
-  /** 文件锁定冲突 */
-  LOCK = 'lock',
-  /** 符号链接冲突 */
-  SYMLINK = 'symlink',
-}
+export { ConflictResolutionStrategy, ConflictType }
 
 /**
- * 冲突解决策略枚举
+ * 临时实现：获取文件版本
+ * TODO: 替换为实际的版本控制系统集成
  */
-export enum ConflictResolutionStrategy {
-  /** 使用源文件覆盖目标文件 */
-  USE_SOURCE = 'use-source',
-  /** 保留目标文件 */
-  KEEP_TARGET = 'keep-target',
-  /** 尝试自动合并（仅适用于文本文件） */
-  AUTO_MERGE = 'auto-merge',
-  /** 提示用户解决 */
-  PROMPT_USER = 'prompt-user',
+async function getFileVersion(filePath: string): Promise<string | null> {
+  try {
+    // 尝试从文件内容或元数据中提取版本
+    // 这里只是一个示例实现
+    const stats = await fs.stat(filePath)
+    // 使用文件修改时间作为临时版本标识
+    return stats.mtime.getTime().toString()
+  } catch (error) {
+    console.error(`Failed to get version for file ${filePath}:`, error)
+    return null
+  }
 }
 
 /**
@@ -143,8 +128,10 @@ export class ConflictResolver {
       // 如果都是目录，检查是否有符号链接冲突
       if (sourceStat.isDirectory() && targetStat.isDirectory()) {
         // 检查符号链接
-        const sourceIsSymlink = await fs.pathIsSymbolicLink(sourcePath)
-        const targetIsSymlink = await fs.pathIsSymbolicLink(targetPath)
+        const sourceLstat = await fs.lstat(sourcePath)
+        const targetLstat = await fs.lstat(targetPath)
+        const sourceIsSymlink = sourceLstat.isSymbolicLink()
+        const targetIsSymlink = targetLstat.isSymbolicLink()
 
         if (sourceIsSymlink || targetIsSymlink) {
           const sourceTarget = sourceIsSymlink ? await fs.readlink(sourcePath) : undefined
@@ -162,24 +149,6 @@ export class ConflictResolver {
         return null
       }
 
-      // 检查是否是符号链接
-      const sourceIsSymlink = await fs.pathIsSymbolicLink(sourcePath)
-      const targetIsSymlink = await fs.pathIsSymbolicLink(targetPath)
-
-      if (sourceIsSymlink || targetIsSymlink) {
-        const sourceTarget = sourceIsSymlink ? await fs.readlink(sourcePath) : undefined
-        const targetTarget = targetIsSymlink ? await fs.readlink(targetPath) : undefined
-
-        if (sourceTarget !== targetTarget) {
-          return {
-            type: ConflictType.SYMLINK,
-            sourcePath,
-            targetPath,
-            symlinkTarget: sourceTarget !== undefined ? sourceTarget : targetTarget,
-          }
-        }
-      }
-
       // 如果都是文件，比较内容哈希
       const sourceHash = await getFileHash(sourcePath)
       const targetHash = await getFileHash(targetPath)
@@ -187,10 +156,12 @@ export class ConflictResolver {
       if (sourceHash !== targetHash) {
         // 检查是否有版本冲突
         if (checkVersion) {
-          // 这里假设我们有一个获取文件版本的方法
+          // 这里应该实现一个获取文件版本的方法
           // 实际实现中，可能需要根据版本控制系统或元数据存储来获取
-          const sourceVersion = '1.0.0' // 示例值
-          const targetVersion = '1.1.0' // 示例值
+          // 临时修复：默认使用相同版本以避免始终检测到版本冲突
+          // TODO: 实现真实的版本获取逻辑
+          const sourceVersion = await getFileVersion(sourcePath) || '1.0.0'
+          const targetVersion = await getFileVersion(targetPath) || '1.0.0'
 
           if (sourceVersion !== targetVersion) {
             return {
@@ -527,7 +498,7 @@ export class ConflictResolver {
 
       // 根据冲突类型添加特定选项
       if (conflict.type === ConflictType.VERSION) {
-        choices.push({ title: '创建新版本', value: 'create-version' })
+        choices.push({ title: '创建新版本', value: ConflictResolutionStrategy.CREATE_VERSION })
       }
 
       const { resolution } = await prompts({
@@ -658,7 +629,8 @@ export class ConflictResolver {
           await fs.unlink(conflict.targetPath)
         }
         // 创建新的符号链接
-        if (await fs.pathIsSymbolicLink(conflict.sourcePath)) {
+        const sourceStat = await fs.lstat(conflict.sourcePath)
+        if (sourceStat.isSymbolicLink()) {
           const target = await fs.readlink(conflict.sourcePath)
           await fs.symlink(target, conflict.targetPath)
           logger.success(`创建符号链接: ${green(conflict.targetPath)} -> ${target}`)
@@ -666,7 +638,8 @@ export class ConflictResolver {
         else {
           // 如果源不是符号链接，复制文件或目录
           if ((await fs.stat(conflict.sourcePath)).isDirectory()) {
-            await fs.copy(conflict.sourcePath, conflict.targetPath)
+            // 使用正确的选项参数，确保覆盖现有文件
+            await fs.copy(conflict.sourcePath, conflict.targetPath, { overwrite: true })
           }
           else {
             await fs.copyFile(conflict.sourcePath, conflict.targetPath)
@@ -684,40 +657,6 @@ export class ConflictResolver {
   }
 
   /**
-    let resolutionStrategy = strategy || this.config.defaultStrategy
-
-    // 检查是否应该自动解决
-    if (conflict.type === ConflictType.CONTENT && this.config.autoResolveTypes) {
-      const fileExtension = path.extname(conflict.sourcePath).toLowerCase()
-      if (this.config.autoResolveTypes.includes(fileExtension)) {
-        logger.debug(`自动解决冲突: ${conflict.sourcePath} (匹配自动解决类型 ${fileExtension})`)
-        // 如果是自动解决类型，使用配置中的默认策略
-        if (!strategy) {
-          resolutionStrategy = this.config.defaultStrategy
-        }
-      }
-    }
-
-    try {
-      switch (conflict.type) {
-        case ConflictType.CONTENT:
-          return this.resolveContentConflict(conflict, resolutionStrategy)
-        case ConflictType.TYPE:
-          return this.resolveTypeConflict(conflict, resolutionStrategy)
-        case ConflictType.RENAME:
-          return this.resolveRenameConflict(conflict, resolutionStrategy)
-        default:
-          logger.error(`未知的冲突类型: ${conflict.type}`)
-          return false
-      }
-    }
-    catch (error) {
-      logger.error(`解决冲突时出错: ${error instanceof Error ? error.message : String(error)}`)
-      return false
-    }
-  }
-
-  /**
    * 解决内容冲突
    * @param conflict 冲突信息
    * @param strategy 解决策略
@@ -726,6 +665,7 @@ export class ConflictResolver {
   private async resolveContentConflict(
     conflict: ConflictInfo,
     strategy: ConflictResolutionStrategy,
+    options: { autoMergeDepth?: number } = {},
   ): Promise<boolean> {
     // 保留新的实现
     let resolved = false
@@ -752,6 +692,7 @@ export class ConflictResolver {
 
       case ConflictResolutionStrategy.AUTO_MERGE:
         try {
+          const { autoMergeDepth = 3 } = options
           const sourceContent = await fs.readFile(conflict.sourcePath, 'utf8')
           const targetContent = await fs.readFile(conflict.targetPath, 'utf8')
 
@@ -1151,20 +1092,4 @@ ${targetContent}
     logger.info(`成功解决 ${resolvedCount}/${conflicts.length} 个冲突`)
     return resolvedCount
   }
-}
-
-/**
- * 检查路径是否应该被忽略
- * @param path 路径
- * @param ignorePatterns 忽略模式列表
- * @returns 是否应该被忽略
- */
-function shouldIgnore(path: string, ignorePatterns: string[]): boolean {
-  // 简化实现，实际项目中可能需要使用更复杂的模式匹配
-  for (const pattern of ignorePatterns) {
-    if (path.includes(pattern)) {
-      return true
-    }
-  }
-  return false
 }

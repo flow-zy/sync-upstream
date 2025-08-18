@@ -44,6 +44,14 @@ export enum ConflictType {
   TYPE = 'type',
   /** 重命名冲突 */
   RENAME = 'rename',
+  /** 版本冲突 */
+  VERSION = 'version',
+  /** 权限冲突 */
+  PERMISSION = 'permission',
+  /** 文件锁定冲突 */
+  LOCK = 'lock',
+  /** 符号链接冲突 */
+  SYMLINK = 'symlink',
 }
 
 /**
@@ -58,6 +66,11 @@ export enum ConflictResolutionStrategy {
   AUTO_MERGE = 'auto-merge',
   /** 提示用户解决 */
   PROMPT_USER = 'prompt-user',
+  /** 创建新版本 */
+  CREATE_VERSION = 'create-version',
+  /** 忽略冲突 */
+  IGNORE = 'ignore',
+
 }
 
 /**

@@ -5,6 +5,7 @@ import pLimit from 'p-limit'
 import { generateCacheKey, getFromCache, writeToCache } from './cache'
 import { normalizePath } from './ignore'
 import { Logger } from './logger'
+import { withRetry } from './retry'
 
 // 创建logger实例
 const logger = new Logger()
@@ -157,7 +158,7 @@ export async function getDirectoryHashes(
               // 为文件哈希计算添加重试机制
               hashes[relativePath] = await withRetry(
                 () => getFileHash(entryPath, { useCache }),
-                { maxRetries: 3, delay: 1000 },
+                { maxRetries: 3, initialDelay: 1000, backoffFactor: 2 },
               )
             }
             else {

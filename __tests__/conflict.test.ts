@@ -245,3 +245,104 @@ describe('conflictResolver - Log Resolution', () => {
     }
   })
 })
+
+// 测试目录冲突检测的递归调用和缓存机制
+describe('conflictResolver - Directory Conflict Recursion and Cache', () => {
+  it('should correctly detect conflicts in nested directories with cache', async () => {
+    // 创建嵌套目录结构
+    const nestedSourceDir = path.join(__dirname, 'test-source', 'nested', 'deep')
+    const nestedTargetDir = path.join(__dirname, 'test-target', 'nested', 'deep')
+    await fs.mkdir(nestedSourceDir, { recursive: true })
+    await fs.mkdir(nestedTargetDir, { recursive: true })
+
+    // 创建冲突文件
+    const sourceFile = path.join(nestedSourceDir, 'nested-file.txt')
+    const targetFile = path.join(nestedTargetDir, 'nested-file.txt')
+    await fs.writeFile(sourceFile, 'Source content in nested directory')
+    await fs.writeFile(targetFile, 'Target content in nested directory')
+
+    const resolver = new ConflictResolver({
+      defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
+    })
+
+    // 第一次检测，应该没有缓存
+    const cache = new Map()
+    const firstConflicts = await resolver.detectDirectoryConflicts(
+      path.join(__dirname, 'test-source'),
+      path.join(__dirname, 'test-target'),
+      [],
+      { quickCheck: false, cache },
+    )
+
+    // 应该检测到嵌套目录中的冲突
+    expect(firstConflicts.length).toBeGreaterThanOrEqual(4)
+    expect(cache.size).toBeGreaterThan(0)
+
+    // 第二次检测，应该使用缓存
+    const secondConflicts = await resolver.detectDirectoryConflicts(
+      path.join(__dirname, 'test-source'),
+      path.join(__dirname, 'test-target'),
+      [],
+      { quickCheck: false, cache },
+    )
+
+    // 两次结果应该相同
+    expect(secondConflicts.length).toBe(firstConflicts.length)
+  })
+
+  it('should handle directory conflicts with quickCheck enabled', async () => {
+    const resolver = new ConflictResolver({
+      defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
+    })
+
+    // 使用quickCheck检测
+    const conflicts = await resolver.detectDirectoryConflicts(
+      path.join(__dirname, 'test-source'),
+      path.join(__dirname, 'test-target'),
+      [],
+      { quickCheck: true },
+    )
+
+    // 应该至少检测到一些冲突
+    expect(conflicts.length).toBeGreaterThan(0)
+  })
+
+  it('should handle complex directory structures without errors', async () => {
+    // 创建更复杂的目录结构
+    const complexSourceDir = path.join(__dirname, 'test-source', 'complex')
+    const complexTargetDir = path.join(__dirname, 'test-target', 'complex')
+    await fs.mkdir(complexSourceDir, { recursive: true })
+    await fs.mkdir(complexTargetDir, { recursive: true })
+
+    // 创建多层嵌套目录和文件
+    for (let i = 0; i < 3; i++) {
+      const levelDirSource = path.join(complexSourceDir, `level${i}`)
+      const levelDirTarget = path.join(complexTargetDir, `level${i}`)
+      await fs.mkdir(levelDirSource, { recursive: true })
+      await fs.mkdir(levelDirTarget, { recursive: true })
+
+      await fs.writeFile(
+        path.join(levelDirSource, `file${i}.txt`),
+        `Source content at level ${i}`,
+      )
+      await fs.writeFile(
+        path.join(levelDirTarget, `file${i}.txt`),
+        `Target content at level ${i}`,
+      )
+    }
+
+    const resolver = new ConflictResolver({
+      defaultStrategy: ConflictResolutionStrategy.PROMPT_USER,
+    })
+
+    // 检测复杂目录结构中的冲突
+    const conflicts = await resolver.detectDirectoryConflicts(
+      complexSourceDir,
+      complexTargetDir,
+      [],
+    )
+
+    // 应该检测到所有层级的冲突
+    expect(conflicts.length).toBe(3)
+  })
+})

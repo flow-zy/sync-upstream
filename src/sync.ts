@@ -827,7 +827,7 @@ export class UpstreamSyncer {
               // 使用箭头函数确保变量作用域正确
               const copyWithIgnore = async (projectRoot: string, ignorePatterns: string[]) => {
                 await fs.copy(sourcePath, destPath, {
-                  overwrite: false, // 不覆盖已存在的文件
+                  overwrite: this.forceOverwrite, // 遵循全局强制覆盖配置
                   errorOnExist: false, // 已存在的文件不会报错
                   filter: (src) => {
                     const relativePath = path.relative(projectRoot, src)
