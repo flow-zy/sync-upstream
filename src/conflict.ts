@@ -261,16 +261,50 @@ export class ConflictResolver {
    * @param sourceDir 源目录路径
    * @param targetDir 目标目录路径
    * @param ignorePatterns 忽略模式
+   * @param options 可选配置项
    * @returns 冲突信息列表
    */
   public async detectDirectoryConflicts(
     sourceDir: string,
     targetDir: string,
     ignorePatterns: string[] = [],
+    options: { quickCheck?: boolean, cache?: Map<string, ConflictInfo[]> } = {},
   ): Promise<ConflictInfo[]> {
+    const { quickCheck = true, cache = new Map() } = options
     const conflicts: ConflictInfo[] = []
+    const cacheKey = `${sourceDir}:${targetDir}`
+
+    // 检查缓存
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey) || []
+    }
 
     try {
+      // 快速检查 - 只检查目录是否存在和类型
+      if (quickCheck) {
+        const sourceExists = await fs.pathExists(sourceDir)
+        const targetExists = await fs.pathExists(targetDir)
+
+        if (sourceExists && targetExists) {
+          const sourceIsDir = await fs.stat(sourceDir).then(stat => stat.isDirectory())
+          const targetIsDir = await fs.stat(targetDir).then(stat => stat.isDirectory())
+
+          if (sourceIsDir !== targetIsDir) {
+            // 类型冲突
+            const conflict: ConflictInfo = {
+              type: ConflictType.TYPE,
+              sourcePath: sourceDir,
+              targetPath: targetDir,
+              sourceType: sourceIsDir ? 'directory' : 'file',
+              targetType: targetIsDir ? 'directory' : 'file',
+            }
+            conflicts.push(conflict)
+            cache.set(cacheKey, conflicts)
+            return conflicts
+          }
+        }
+      }
+
       // 读取源目录
       const sourceEntries = await fs.readdir(sourceDir, { withFileTypes: true })
 
@@ -284,14 +318,37 @@ export class ConflictResolver {
           continue
         }
 
+        // 对特定目录进行快速处理
+        const dirName = entry.name.toLowerCase()
+        const skipDeepCheck = ['node_modules', 'dist', 'build', 'coverage', '.git'].includes(dirName)
+
         if (entry.isDirectory()) {
-          // 递归检查子目录
-          const subConflicts = await this.detectDirectoryConflicts(
-            sourcePath,
-            targetPath,
-            ignorePatterns,
-          )
-          conflicts.push(...subConflicts)
+          if (skipDeepCheck) {
+            // 对于大型目录，只检查是否存在类型冲突
+            const targetExists = await fs.pathExists(targetPath)
+            if (targetExists) {
+              const targetIsDir = await fs.stat(targetPath).then(stat => stat.isDirectory())
+              if (!targetIsDir) {
+                conflicts.push({
+                  type: ConflictType.TYPE,
+                  sourcePath,
+                  targetPath,
+                  sourceType: 'directory',
+                  targetType: 'file',
+                })
+              }
+            }
+          }
+          else {
+            // 递归检查子目录
+            const subConflicts = await this.detectDirectoryConflicts(
+              sourcePath,
+              targetPath,
+              ignorePatterns,
+              { quickCheck, cache },
+            )
+            conflicts.push(...subConflicts)
+          }
         }
         else {
           // 检查文件冲突
@@ -302,6 +359,8 @@ export class ConflictResolver {
         }
       }
 
+      // 更新缓存
+      cache.set(cacheKey, conflicts)
       return conflicts
     }
     catch (error) {
@@ -406,8 +465,6 @@ export class ConflictResolver {
     }
   }
 
-
-
   /**
    * 自动合并文件内容
    * @param sourcePath 源文件路径
@@ -503,10 +560,6 @@ export class ConflictResolver {
       return false
     }
   }
-
-
-
-
 
   /**
    * 解决版本冲突
@@ -632,7 +685,7 @@ export class ConflictResolver {
 
   /**
     let resolutionStrategy = strategy || this.config.defaultStrategy
-   
+
     // 检查是否应该自动解决
     if (conflict.type === ConflictType.CONTENT && this.config.autoResolveTypes) {
       const fileExtension = path.extname(conflict.sourcePath).toLowerCase()
@@ -644,7 +697,7 @@ export class ConflictResolver {
         }
       }
     }
-   
+
     try {
       switch (conflict.type) {
         case ConflictType.CONTENT:
@@ -663,7 +716,7 @@ export class ConflictResolver {
       return false
     }
   }
-   
+
   /**
    * 解决内容冲突
    * @param conflict 冲突信息

@@ -1,15 +1,31 @@
 import crypto from 'node:crypto'
-
 import path from 'node:path'
 import fs from 'fs-extra'
+import pLimit from 'p-limit'
+import { generateCacheKey, getFromCache, writeToCache } from './cache'
 import { normalizePath } from './ignore'
+import { Logger } from './logger'
+
+// 创建logger实例
+const logger = new Logger()
+
+// 大文件阈值 (10MB)
+const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024
+// 大文件缓冲区大小 (640KB)
+const LARGE_FILE_BUFFER_SIZE = 640 * 1024
 
 /**
  * 计算文件的MD5哈希值
  * @param filePath 文件路径
+ * @param options 可选配置项
  * @returns 文件的MD5哈希值
  */
-export async function getFileHash(filePath: string): Promise<string> {
+export async function getFileHash(
+  filePath: string,
+  options: { useCache?: boolean, largeFileBufferSize?: number } = {},
+): Promise<string> {
+  const { useCache = true, largeFileBufferSize = LARGE_FILE_BUFFER_SIZE } = options
+
   try {
     // 检查路径是否是文件
     const stats = await fs.stat(filePath)
@@ -17,15 +33,65 @@ export async function getFileHash(filePath: string): Promise<string> {
       throw new Error(`路径 ${filePath} 不是文件，无法计算哈希值`)
     }
 
-    const buffer = await fs.readFile(filePath)
-    return crypto.createHash('md5').update(buffer).digest('hex')
+    // 生成缓存键
+    const cacheKey = generateCacheKey('file-hash', { filePath })
+
+    // 尝试从缓存获取
+    if (useCache) {
+      const cachedHash = await getFromCache(cacheKey)
+      if (cachedHash) {
+        return cachedHash.toString()
+      }
+    }
+
+    // 根据文件大小选择不同的处理方式
+    if (stats.size > LARGE_FILE_THRESHOLD) {
+      // 大文件使用流式处理
+      logger.debug(`文件 ${filePath} 大小为 ${(stats.size / 1024 / 1024).toFixed(2)}MB，使用流式处理`)
+      return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('md5')
+        const stream = fs.createReadStream(filePath, { highWaterMark: largeFileBufferSize })
+
+        stream.on('data', (chunk) => {
+          hash.update(chunk)
+        })
+
+        stream.on('error', (error) => {
+          logger.error(`流式读取文件 ${filePath} 时出错:`, error)
+          reject(error)
+        })
+
+        stream.on('end', () => {
+          const result = hash.digest('hex')
+          // 写入缓存
+          if (useCache) {
+            writeToCache(cacheKey, Buffer.from(result)).catch((err) => {
+              logger.error(`写入缓存失败:`, err)
+            })
+          }
+          resolve(result)
+        })
+      })
+    }
+    else {
+      // 小文件直接读取
+      const buffer = await fs.readFile(filePath)
+      const hash = crypto.createHash('md5').update(buffer).digest('hex')
+
+      // 写入缓存
+      if (useCache) {
+        await writeToCache(cacheKey, Buffer.from(hash))
+      }
+
+      return hash
+    }
   }
   catch (error: any) {
     if (error.code === 'EISDIR') {
-      console.error(`错误: 尝试读取目录 ${filePath} 作为文件`)
+      logger.error(`错误: 尝试读取目录 ${filePath} 作为文件`)
     }
     else {
-      console.error(`计算文件 ${filePath} 哈希值时出错:`, error.message)
+      logger.error(`计算文件 ${filePath} 哈希值时出错:`, error.message)
     }
     throw error // 重新抛出错误，确保上层能捕获
   }
@@ -46,16 +112,8 @@ export async function getDirectoryHashes(
   options: { parallelLimit?: number, useCache?: boolean, onProgress?: (processed: number, total: number) => void } = {},
 ): Promise<Record<string, string>> {
   const { parallelLimit = 10, useCache = true, onProgress } = options
-  const cacheKey = `hash:dir:${dirPath}:${JSON.stringify(ignorePatterns)}`
-
-  // 尝试从缓存获取整个目录的哈希值
-  if (useCache) {
-    const cachedHashes = await getFromCache(cacheKey)
-    if (cachedHashes) {
-      logger.debug(`从缓存获取目录 ${dirPath} 的哈希值映射`)
-      return JSON.parse(cachedHashes)
-    }
-  }
+  // 使用p-limit控制并行数量
+  const limit = pLimit(parallelLimit)
 
   try {
     // 检查路径是否是目录
@@ -69,12 +127,8 @@ export async function getDirectoryHashes(
     const totalEntries = entries.length
     let processedEntries = 0
 
-    // 使用队列控制并行数量
-    const queue: Promise<void>[] = []
-    const activePromises: Set<Promise<void>> = new Set()
-
-    const processEntry = async (entry: fs.Dirent) => {
-      let promise: Promise<void>
+    // 创建处理条目的任务数组
+    const tasks = entries.map(async (entry) => {
       try {
         const entryPath = path.join(dirPath, entry.name)
         const relativePath = path.relative(process.cwd(), entryPath)
@@ -96,34 +150,22 @@ export async function getDirectoryHashes(
           Object.assign(hashes, subHashes)
         }
         else {
-          // 额外检查，确保我们不会尝试将目录当作文件处理
-          try {
-            // 首先检查路径是否存在
-            if (!(await fs.pathExists(entryPath))) {
-              logger.warn(`警告: 条目 ${entry.name} 不存在，跳过`)
-              return
-            }
-
+          // 检查路径是否存在且是文件
+          if (await fs.pathExists(entryPath)) {
             const entryStats = await fs.stat(entryPath)
-            if (entryStats.isDirectory()) {
-              logger.warn(`警告: 条目 ${entry.name} 被识别为文件，但实际是目录，跳过`)
-              return
+            if (entryStats.isFile()) {
+              // 为文件哈希计算添加重试机制
+              hashes[relativePath] = await withRetry(
+                () => getFileHash(entryPath, { useCache }),
+                { maxRetries: 3, delay: 1000 },
+              )
             }
-
-            if (!entryStats.isFile()) {
-              logger.warn(`警告: 条目 ${entry.name} 既不是文件也不是目录，跳过`)
-              return
+            else {
+              logger.warn(`警告: 条目 ${entry.name} 不是文件，跳过`)
             }
-
-            // 为文件哈希计算添加重试机制
-            hashes[relativePath] = await withRetry(
-              () => getFileHash(entryPath, { useCache }),
-              { maxRetries: 3, delay: 1000 },
-            )
           }
-          catch (statError: any) {
-            logger.error(`获取条目 ${entry.name} 状态时出错:`, statError)
-            // 跳过此条目
+          else {
+            logger.warn(`警告: 条目 ${entry.name} 不存在，跳过`)
           }
         }
       }
@@ -136,42 +178,19 @@ export async function getDirectoryHashes(
         if (onProgress) {
           onProgress(processedEntries, totalEntries)
         }
-        activePromises.delete(promise)
+      }
+    })
 
-        // 处理队列中的下一个任务
-        if (queue.length > 0) {
-          const nextPromise = queue.shift()!
-          activePromises.add(nextPromise)
-          nextPromise.then(() => {})
-        }
-      }
-    }
-
-    // 初始化队列
-    for (const entry of entries) {
-      const promise = processEntry(entry)
-      if (activePromises.size < parallelLimit) {
-        activePromises.add(promise)
-        promise.then(() => {})
-      }
-      else {
-        queue.push(promise)
-      }
-    }
+    // 使用p-limit控制并行执行
+    const limitedTasks = tasks.map(task => limit(() => task))
 
     // 等待所有任务完成
-    await Promise.all(activePromises)
-
-    // 存入缓存
-    if (useCache) {
-      await writeToCache(cacheKey, JSON.stringify(hashes))
-    }
+    await Promise.all(limitedTasks)
 
     return hashes
   }
   catch (error: any) {
     logger.error(`计算目录 ${dirPath} 哈希值时出错:`, error)
-    // 不再重新抛出错误，避免中断上层调用
     return {}
   }
 }

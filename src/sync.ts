@@ -3,6 +3,7 @@ import type { RetryConfig } from './retry'
 import type { SyncOptions } from './types'
 import os from 'node:os'
 import path from 'node:path'
+// 移除重复导入
 import { performance } from 'node:perf_hooks'
 import fs from 'fs-extra'
 import pLimit from 'p-limit'
@@ -22,6 +23,11 @@ import { logger, LogLevel } from './logger'
 import { displaySummary } from './prompts'
 import { withRetry } from './retry'
 import { AuthType, BranchStrategy } from './types'
+
+export { initializeCache }
+
+// 缓存系统会在cli.ts中初始化
+// 此处不再重复初始化，避免日志重复输出
 
 // 创建一个简单的进度条实现，因为 consola 3.x 移除了内置的 ProgressBar
 class SimpleProgressBar {
@@ -199,6 +205,8 @@ export class UpstreamSyncer {
         }
         else {
           // 尝试创建URL对象来验证HTTP/HTTPS URL格式
+          // 确保URL没有前缀问号
+          repoUrl = repoUrl.replace(/^\?/, '')
           new URL(repoUrl)
           logger.info(`验证仓库 URL: ${cyan(repoUrl)}`)
         }
@@ -212,17 +220,31 @@ export class UpstreamSyncer {
         const { authConfig } = this.options
         if (authConfig.type === AuthType.USER_PASS && authConfig.username && authConfig.password) {
           // 构建带用户名和密码的 URL
-          const url = new URL(repoUrl)
-          url.username = encodeURIComponent(authConfig.username)
-          url.password = encodeURIComponent(authConfig.password)
-          repoUrl = url.toString()
+          try {
+            // 确保URL没有前缀问号
+            repoUrl = repoUrl.replace(/^\?/, '')
+            const url = new URL(repoUrl)
+            url.username = encodeURIComponent(authConfig.username)
+            url.password = encodeURIComponent(authConfig.password)
+            repoUrl = url.toString()
+          }
+          catch (urlError) {
+            throw new GitError('构建带认证信息的URL失败', urlError as Error)
+          }
         }
         else if (authConfig.type === AuthType.PAT && authConfig.token) {
           // 构建带个人访问令牌的 URL
-          const url = new URL(repoUrl)
-          url.username = 'git' // 对于 PAT，用户名可以是任意值，但通常使用 'git'
-          url.password = encodeURIComponent(authConfig.token)
-          repoUrl = url.toString()
+          try {
+            // 确保URL没有前缀问号
+            repoUrl = repoUrl.replace(/^\?/, '')
+            const url = new URL(repoUrl)
+            url.username = 'git' // 对于 PAT，用户名可以是任意值，但通常使用 'git'
+            url.password = encodeURIComponent(authConfig.token)
+            repoUrl = url.toString()
+          }
+          catch (urlError) {
+            throw new GitError('构建带认证信息的URL失败', urlError as Error)
+          }
         }
         // SSH 认证已经在构造函数中处理
       }
@@ -656,15 +678,38 @@ export class UpstreamSyncer {
                 // 检查是否为大文件
                 if (await isLargeFile(sourcePath)) {
                   logger.info(`  处理大文件: ${relativePath}`)
-                  // 使用流式处理大文件
-                  await fs.createReadStream(sourcePath)
-                    .pipe(fs.createWriteStream(destPath))
-                    .on('error', (err) => {
-                      throw new FsError(`复制大文件 ${sourcePath} 失败`, err)
-                    })
-                    .on('finish', () => {
-                      logger.debug(`  大文件 ${relativePath} 复制完成`)
-                    })
+                  // 使用流式处理大文件，设置更大的缓冲区
+                  const readStream = fs.createReadStream(sourcePath, { highWaterMark: 64 * 1024 * 10 }) // 640KB
+                  const writeStream = fs.createWriteStream(destPath, { highWaterMark: 64 * 1024 * 10 })
+
+                  // 添加进度显示
+                  const fileStats = await fs.stat(sourcePath)
+                  const fileSize = fileStats.size
+                  let bytesCopied = 0
+
+                  readStream.on('data', (chunk) => {
+                    bytesCopied += chunk.length
+                    const progress = Math.round((bytesCopied / fileSize) * 100)
+                    if (progress % 10 === 0) {
+                      logger.debug(`  大文件 ${relativePath} 复制进度: ${progress}%`)
+                    }
+                  })
+
+                  // 使用promise包装流操作
+                  await new Promise<void>((resolve, reject) => {
+                    readStream
+                      .pipe(writeStream)
+                      .on('error', (err) => {
+                        // 关闭流并处理错误
+                        readStream.destroy()
+                        writeStream.destroy()
+                        reject(new FsError(`复制大文件 ${sourcePath} 失败`, err))
+                      })
+                      .on('finish', () => {
+                        logger.debug(`  大文件 ${relativePath} 复制完成`)
+                        resolve()
+                      })
+                  })
                 }
                 else {
                   // 普通文件复制
@@ -721,6 +766,11 @@ export class UpstreamSyncer {
   }
 
   private async applyChanges(): Promise<void> {
+    // 加载忽略模式
+    const projectRoot = process.cwd()
+    const ignorePatterns = await loadIgnorePatterns(projectRoot)
+    // 导入shouldIgnore函数
+    const { shouldIgnore } = require('./ignore')
     // 如果启用了灰度发布
     if (this.grayReleaseManager.isEnabled()) {
       this.logStep('执行灰度发布...')
@@ -753,7 +803,8 @@ export class UpstreamSyncer {
             // 检测冲突
             if (await fs.pathExists(destPath)) {
               logger.info(`检测 ${dir} 目录中的冲突...`)
-              const ignorePatterns = await loadIgnorePatterns(process.cwd())
+              // 已在方法顶部加载忽略模式和导入shouldIgnore函数
+              // 此处直接使用已定义的变量
               const conflicts = await this.conflictResolver.detectDirectoryConflicts(
                 sourcePath,
                 destPath,
@@ -772,10 +823,20 @@ export class UpstreamSyncer {
 
               // 对于冲突已解决的文件，我们应该保留本地修改
               // 只复制不存在的文件或目录
-              await fs.copy(sourcePath, destPath, {
-                overwrite: false, // 不覆盖已存在的文件
-                errorOnExist: false, // 已存在的文件不会报错
-              })
+              // 复制时也应用忽略模式
+              // 使用箭头函数确保变量作用域正确
+              const copyWithIgnore = async (projectRoot: string, ignorePatterns: string[]) => {
+                await fs.copy(sourcePath, destPath, {
+                  overwrite: false, // 不覆盖已存在的文件
+                  errorOnExist: false, // 已存在的文件不会报错
+                  filter: (src) => {
+                    const relativePath = path.relative(projectRoot, src)
+                    return !shouldIgnore(relativePath, ignorePatterns)
+                  },
+                })
+              }
+
+              await copyWithIgnore(projectRoot, ignorePatterns)
             }
             catch (error) {
               throw new FsError(`复制目录 ${sourcePath} 到 ${destPath} 失败`, error as Error)
@@ -883,15 +944,20 @@ export class UpstreamSyncer {
 
     this.logStep('清理临时资源...')
 
+    // 记录清理开始时间
+    const cleanupStartTime = performance.now()
+
     // 清理临时分支
     if (this.tempBranch) {
       try {
+        logger.info(`开始清理临时分支: ${this.tempBranch}`)
         // 先切换到一个不是临时分支的分支
         const targetBranch = this.originalBranch || this.options.companyBranch
+        logger.info(`切换到目标分支: ${targetBranch}`)
         await this.git.checkout(targetBranch)
         try {
           await this.git.deleteLocalBranch(this.tempBranch)
-          logger.success('临时分支已删除')
+          logger.success(`临时分支 ${this.tempBranch} 已删除`)
         }
         catch (error) {
           throw new GitError('删除临时分支失败', error as Error)
@@ -910,11 +976,21 @@ export class UpstreamSyncer {
     // 清理分支策略相关资源
     await this.cleanupBranchStrategy()
 
-    // 清理临时目录
+    // 清理临时目录 - 只保留一处清理逻辑
     try {
+      logger.info(`开始清理临时目录: ${this.tempDir}`)
       if (await fs.pathExists(this.tempDir)) {
-        await fs.remove(this.tempDir)
-        logger.success('临时目录已删除')
+        // 添加超时处理，防止删除操作卡住
+        const removePromise = fs.remove(this.tempDir)
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('删除临时目录超时')), 30000)
+        })
+
+        await Promise.race([removePromise, timeoutPromise])
+        logger.success(`临时目录 ${this.tempDir} 已删除`)
+      }
+      else {
+        logger.info(`临时目录 ${this.tempDir} 不存在，跳过删除`)
       }
     }
     catch (error) {
@@ -938,12 +1014,14 @@ export class UpstreamSyncer {
       logger.warn(`移除上游仓库失败: ${error instanceof Error ? error.message : String(error)}`)
     }
 
-    // 清理临时目录
     try {
-      await fs.remove(this.tempDir)
+      // 移除重复的临时目录清理逻辑
+      // 记录清理结束时间
+      const cleanupEndTime = performance.now()
+      logger.info(`清理临时资源完成，耗时: ${((cleanupEndTime - cleanupStartTime) / 1000).toFixed(2)}秒`)
     }
     catch (error) {
-      logger.warn(`清理临时目录失败: ${error}`)
+      logger.warn(`清理临时目录失败: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

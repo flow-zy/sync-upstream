@@ -163,7 +163,8 @@ function startPeriodicCleanup() {
       logger.debug('执行定期缓存清理...')
       await cleanupExpiredCache()
       await checkCacheSizeLimit()
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(`定期清理缓存失败: ${error instanceof Error ? error.message : String(error)}`)
     }
   }, CACHE_CLEANUP_INTERVAL)
@@ -197,7 +198,7 @@ async function warmupCache(): Promise<void> {
     }
 
     for (const chunk of chunks) {
-      const promises = chunk.map(async (key) => {
+      const promises = chunk.map(async (key: string) => {
         try {
           // 这里假设我们有一个函数可以获取要预热的数据
           // 在实际应用中，这可能需要从API、数据库或文件系统获取数据
@@ -207,7 +208,8 @@ async function warmupCache(): Promise<void> {
           const dummyData = Buffer.from(`Warmed up data for key: ${key}`)
           await writeToCache(key, dummyData)
           successCount++
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(`预热缓存键 ${key} 失败: ${error instanceof Error ? error.message : String(error)}`)
           failCount++
         }
@@ -218,7 +220,8 @@ async function warmupCache(): Promise<void> {
 
     isCacheWarmedUp = true
     logger.success(`缓存预热完成: 成功 ${successCount} 个, 失败 ${failCount} 个`)
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(`缓存预热失败: ${error instanceof Error ? error.message : String(error)}`)
     isCacheWarmedUp = false
   }
@@ -234,11 +237,11 @@ async function warmupCache(): Promise<void> {
 export function generateCacheKey(
   url: string,
   params: Record<string, any> = {},
-  options: { 
-    contentType?: string,
-    customPrefix?: string,
-    hashAlgorithm?: 'md5' | 'sha1' | 'sha256',
-    includeTimestamp?: boolean,
+  options: {
+    contentType?: string
+    customPrefix?: string
+    hashAlgorithm?: 'md5' | 'sha1' | 'sha256'
+    includeTimestamp?: boolean
     timestampTtl?: number
   } = {},
 ): string {
@@ -258,21 +261,24 @@ export function generateCacheKey(
 
   // 如果需要包含时间戳，添加到键中
   if (options.includeTimestamp) {
-    const ttl = options.timestampTtl || 3600000; // 默认1小时
-    const timestamp = Math.floor(Date.now() / ttl) * ttl;
-    keyString += `|ts:${timestamp}`;
+    const ttl = options.timestampTtl || 3600000 // 默认1小时
+    const timestamp = Math.floor(Date.now() / ttl) * ttl
+    keyString += `|ts:${timestamp}`
   }
 
   // 计算哈希
-  const algorithm = options.hashAlgorithm || 'md5';
+  const algorithm = options.hashAlgorithm || 'md5'
   const hash = crypto.createHash(algorithm).update(keyString).digest('hex')
 
   // 获取配置中的前缀
   const config = getCacheConfig()
   const prefix = options.customPrefix || config.keyPrefix
 
-  // 返回带前缀的缓存键
-  return prefix ? `${prefix}:${algorithm}:${hash}` : `${algorithm}:${hash}`
+  // 替换Windows不允许的字符: :, \, /, *, ?, ", <, >, |
+  const safePrefix = prefix ? prefix.replace(/[:\\/*?"<>|]/g, '-') : ''
+
+  // 返回带前缀的缓存键，确保不包含Windows保留字符
+  return safePrefix ? `${safePrefix}-${algorithm}-${hash}` : `${algorithm}-${hash}`
 }
 
 /**
@@ -378,7 +384,7 @@ function formatBytes(bytes: number): string {
  */
 export async function isCacheValid(
   cacheKey: string,
-  options: { contentType?: string } = {}
+  options: { contentType?: string } = {},
 ): Promise<boolean> {
   const cachePath = path.join(CACHE_DIR, cacheKey)
   const config = getCacheConfig()
@@ -394,7 +400,7 @@ export async function isCacheValid(
     // 确定使用的过期时间
     let expiryMs = config.expiryMs
     const contentType = options.contentType
-    
+
     // 如果提供了内容类型，尝试使用对应的过期时间
     if (contentType && config.typeBasedExpiry) {
       const typeExpiry = config.typeBasedExpiry[contentType]
@@ -433,7 +439,7 @@ export async function isCacheValid(
  */
 export async function getFromCache(
   cacheKey: string,
-  options: { contentType?: string, decompress?: boolean } = {} 
+  options: { contentType?: string, decompress?: boolean } = {},
 ): Promise<Buffer | null> {
   try {
     if (!(await isCacheValid(cacheKey, options))) {
@@ -452,14 +458,18 @@ export async function getFromCache(
       try {
         // 动态导入zlib模块
         const zlib = await import('node:zlib')
-        data = await new Promise<Buffer>((resolve, reject) => {
+        // 确保返回非共享的Buffer类型
+        const decompressedData = await new Promise<Buffer>((resolve, reject) => {
           zlib.gunzip(data, (err, result) => {
-            if (err) reject(err)
+            if (err)
+              reject(err)
             else resolve(result)
           })
         })
+        data = Buffer.from(decompressedData)
         logger.debug(`缓存数据已解压缩: ${cacheKey}`)
-      } catch (error) {
+      }
+      catch (error) {
         logger.error(`解压缩缓存数据失败: ${error instanceof Error ? error.message : String(error)}`)
         // 解压缩失败，返回原始数据
         return data
@@ -501,7 +511,7 @@ export async function writeToCache(
   cacheKey: string,
   data: Buffer,
   retryConfig?: RetryConfig,
-  options: { compress?: boolean, compressionLevel?: number } = {} 
+  options: { compress?: boolean, compressionLevel?: number } = {},
 ): Promise<void> {
   try {
     const cachePath = path.join(CACHE_DIR, cacheKey)
@@ -520,13 +530,15 @@ export async function writeToCache(
         const zlib = await import('node:zlib')
         dataToWrite = await new Promise<Buffer>((resolve, reject) => {
           zlib.gzip(data, { level: compressionLevel }, (err, result) => {
-            if (err) reject(err)
+            if (err)
+              reject(err)
             else resolve(result)
           })
         })
         isCompressed = true
         logger.debug(`缓存数据已压缩: ${formatBytes(data.length)} -> ${formatBytes(dataToWrite.length)}`)
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn(`压缩缓存数据失败，将使用原始数据: ${error instanceof Error ? error.message : String(error)}`)
         isCompressed = false
       }
@@ -539,7 +551,8 @@ export async function writeToCache(
         // 写入压缩标志文件
         if (isCompressed) {
           await fs.writeFile(`${cachePath}.compressed`, '1')
-        } else if (await fs.pathExists(`${cachePath}.compressed`)) {
+        }
+        else if (await fs.pathExists(`${cachePath}.compressed`)) {
           await fs.remove(`${cachePath}.compressed`)
         }
 
@@ -550,7 +563,8 @@ export async function writeToCache(
           try {
             const oldStats = await fs.stat(cachePath)
             cacheStats.totalSize -= oldStats.size
-          } catch (error) {
+          }
+          catch (error) {
             logger.warn(`获取旧缓存大小失败: ${error instanceof Error ? error.message : String(error)}`)
           }
         }
@@ -566,7 +580,7 @@ export async function writeToCache(
       },
       retryConfig || { maxRetries: 3, initialDelay: 1000, backoffFactor: 2 },
     )
-  } 
+  }
   catch (error) {
     logger.error(`写入缓存失败: ${error instanceof Error ? error.message : String(error)}`)
     // 缓存失败不应阻止主流程

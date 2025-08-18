@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG: Partial<SyncOptions> = {
   silent: false,
   dryRun: false,
   previewOnly: false,
-  concurrencyLimit: 5,
+  concurrencyLimit: 10,
   retryConfig: {
     maxRetries: 3,
     initialDelay: 2000,
@@ -124,6 +124,7 @@ const CONFIG_FILES = [
   'sync-tool.config.yaml',
   'sync-tool.config.yml',
   'sync-tool.config.toml',
+  'sync-upstream.config.json',
 ]
 
 /**

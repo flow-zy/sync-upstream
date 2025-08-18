@@ -23,6 +23,7 @@ node_modules
 *.njsproj
 *.sln
 *.sw?
+logs
 docs/.vitepress/dist
 docs/.vitepress/cache
 docs/.vitepress/temp

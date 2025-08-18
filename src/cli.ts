@@ -8,12 +8,39 @@ import { bold, cyan, green, yellow } from 'picocolors'
 import simpleGit from 'simple-git'
 import pkg from '../package.json'
 
-import { DEFAULT_CONFIG, generateDefaultConfig, loadConfig, validateConfig } from './config'
+// 确保缓存系统被初始化
+// 显式引用getFromCache以确保它被包含在编译后的代码中
+import { getFromCache } from './cache'
 
+import { DEFAULT_CONFIG, generateDefaultConfig, loadConfig, validateConfig } from './config'
 import { logger, LogLevel } from './logger'
 import { promptForOptions } from './prompts'
-import { UpstreamSyncer } from './sync'
+import { initializeCache, UpstreamSyncer } from './sync'
+
 import { GrayReleaseStrategy } from './types'
+
+(async () => {
+  try {
+    await initializeCache()
+    logger.debug('Cache system initialized successfully')
+  }
+  catch (error) {
+    logger.error('Failed to initialize cache system:', error as Error)
+  }
+
+  // 确保getFromCache被实际使用
+  try {
+    // 这个调用不会实际执行，因为我们使用了一个不太可能存在的缓存键
+    // 但它会确保函数被编译器包含
+    const dummyResult = await getFromCache('__dummy_cache_key_for_compilation__', { decompress: false })
+    if (dummyResult) {
+      logger.debug('Dummy cache lookup succeeded (unexpected)')
+    }
+  }
+  catch (error) {
+    // 忽略这个错误
+  }
+})()
 
 // 检查当前目录是否是Git仓库
 async function isGitRepository(): Promise<boolean> {

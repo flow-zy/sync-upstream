@@ -10,6 +10,6 @@ export default defineConfig({
   minifyIdentifiers: true,
   minifySyntax: true,
   minifyWhitespace: true,
-  treeshake: 'smallest',
+  treeshake: true,
   banner: { js: '#!/usr/bin/env node\r\n' },
 })
