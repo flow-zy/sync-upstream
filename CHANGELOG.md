@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/flow-zy/sync-upstream/compare/v0.2.6...v0.2.7) (2025-08-18)
+
+### ✨ Features | 新功能
+
+* 优化缓存系统和同步流程 ([47536bb](https://github.com/flow-zy/sync-upstream/commit/47536bbb574b51a0a3adcc740c961d5f1905256a))
+* **conflict:** 扩展冲突类型和解决策略，优化冲突检测逻辑 ([ebb652d](https://github.com/flow-zy/sync-upstream/commit/ebb652dbcfc28aa2b1af1e49a7e4defcf9a4f18e))
+
 ## [0.2.6](https://github.com/flow-zy/sync-upstream/compare/v0.2.5...v0.2.6) (2025-08-17)
 
 ### ✨ Features | 新功能
