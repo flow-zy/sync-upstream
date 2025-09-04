@@ -17,8 +17,6 @@ import { logger, LogLevel } from './logger'
 import { promptForOptions } from './prompts'
 import { initializeCache, UpstreamSyncer } from './sync'
 
-import { GrayReleaseStrategy } from './types'
-
 (async () => {
   try {
     await initializeCache()
@@ -57,8 +55,8 @@ async function isGitRepository(): Promise<boolean> {
 // 解析命令行参数
 const args = minimist(process.argv.slice(2), {
   // 使用string类型并在后续代码中转换为数字
-  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency', 'webhook-port', 'webhook-path', 'webhook-secret', 'webhook-events', 'webhook-branch'],
-  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'gray-release', 'full-release', 'rollback', 'webhook-enable', 'generate-config'],
+  string: ['repo', 'branch', 'company-branch', 'dirs', 'message', 'config', 'config-format', 'retry-max', 'retry-delay', 'retry-backoff', 'concurrency'],
+  boolean: ['push', 'v', 'version', 'force', 'verbose', 'silent', 'dry-run', 'preview-only', 'non-interactive', 'generate-config'],
   alias: {
     r: 'repo',
     b: 'branch',
@@ -81,15 +79,6 @@ const args = minimist(process.argv.slice(2), {
     cl: 'concurrency',
     y: 'non-interactive',
     g: 'generate-config',
-    gr: 'gray-release',
-    fr: 'full-release',
-    ro: 'rollback',
-    we: 'webhook-enable',
-    wp: 'webhook-port',
-    wpa: 'webhook-path',
-    ws: 'webhook-secret',
-    wev: 'webhook-events',
-    wb: 'webhook-branch',
   },
   default: {
     'branch': 'main',
@@ -109,12 +98,6 @@ const args = minimist(process.argv.slice(2), {
     'retry-delay': undefined,
     'retry-backoff': undefined,
     'concurrency': undefined,
-    'webhook-enable': false,
-    'webhook-port': '3000',
-    'webhook-path': '/webhook',
-    'webhook-secret': '',
-    'webhook-events': 'push',
-    'webhook-branch': 'main',
   },
 })
 
@@ -150,15 +133,7 @@ if (args.help) {
   logger.info(green('  -v, --version           显示版本信息'))
   logger.info(green('  -h, --help              显示帮助信息'))
   logger.info(green('  -y, --non-interactive   非交互式模式，跳过所有确认提示'))
-  logger.info(green('  -gr, --gray-release     启用灰度发布模式'))
-  logger.info(green('  -fr, --full-release     执行全量发布'))
-  logger.info(green('  -ro, --rollback         执行回滚操作'))
-  logger.info(green('  -we, --webhook-enable   启用Webhook功能'))
-  logger.info(green('  -wp, --webhook-port     Webhook监听端口'))
-  logger.info(green('  -wpa, --webhook-path    Webhook路径'))
-  logger.info(green('  -ws, --webhook-secret   Webhook密钥'))
-  logger.info(green('  -wev, --webhook-events  Webhook允许的事件类型'))
-  logger.info(green('  -wb, --webhook-branch   Webhook触发分支\n'))
+
   logger.info('示例:')
   logger.info(bold(cyan('  sync-upstream -r https://github.com/open-source/project.git -d src/core,docs')))
   logger.info(`\n${yellow('如果没有提供参数，将启动交互式向导')}`)
@@ -215,30 +190,6 @@ async function run() {
       initialDelay: args['retry-delay'],
       backoffFactor: args['retry-backoff'],
     },
-    // 灰度发布配置
-    grayReleaseConfig: args['gray-release'] ? {
-      enable: true,
-      strategy: GrayReleaseStrategy.PERCENTAGE, // 默认策略
-      percentage: 100, // 默认100%
-    } : undefined,
-    // Webhook配置
-    webhookConfig: args['webhook-enable']
-      ? {
-          enable: true,
-          port: Number.parseInt(args['webhook-port'], 10),
-          path: args['webhook-path'],
-          secret: args['webhook-secret'],
-          supportedPlatforms: ['github'], // 默认支持GitHub
-          allowedEvents: args['webhook-events'].split(',').map((event: string) => event.trim()),
-          triggerBranch: args['webhook-branch'],
-          retryConfig: { maxRetries: 3, initialDelay: 1000, backoffFactor: 2 },
-          securityConfig: { ipWhitelist: [], rateLimit: { maxRequestsPerSecond: 10, statusCode: 429, message: 'Too many requests' } },
-          eventFilterConfig: { rules: [] },
-        }
-      : undefined,
-    // 全量发布和回滚标记
-    fullRelease: args['full-release'],
-    rollback: args.rollback,
   }
 
   // 加载配置文件
@@ -318,7 +269,7 @@ async function run() {
   const actualNonInteractive = nonInteractive && !forceInteractive
 
   // 检查是否有未知参数
-  const unknownParams = Object.keys(args).filter(key => !['_', 'repo', 'r', 'branch', 'b', 'company-branch', 'c', 'dirs', 'd', 'message', 'm', 'push', 'p', 'force', 'f', 'verbose', 'V', 'silent', 's', 'dry-run', 'n', 'preview-only', 'P', 'config', 'C', 'config-format', 'F', 'retry-max', 'rm', 'retry-delay', 'rd', 'retry-backoff', 'rb', 'concurrency', 'cl', 'non-interactive', 'y', 'gray-release', 'gr', 'full-release', 'fr', 'rollback', 'ro', 'help', 'h', 'version', 'v', 'webhook-enable', 'webhook-port', 'webhook-path', 'webhook-secret', 'webhook-events', 'webhook-branch', 'we', 'wp', 'wpa', 'ws', 'wev', 'wb', 'generate-config', 'g'].includes(key))
+  const unknownParams = Object.keys(args).filter(key => !['_', 'repo', 'r', 'branch', 'b', 'company-branch', 'c', 'dirs', 'd', 'message', 'm', 'push', 'p', 'force', 'f', 'verbose', 'V', 'silent', 's', 'dry-run', 'n', 'preview-only', 'P', 'config', 'C', 'config-format', 'F', 'retry-max', 'rm', 'retry-delay', 'rd', 'retry-backoff', 'rb', 'concurrency', 'cl', 'non-interactive', 'y', 'help', 'h', 'version', 'v', 'generate-config', 'g'].includes(key))
   if (unknownParams.length > 0) {
     logger.error('检测到未知的配置项:', undefined, { unknownParams })
     logger.warn('请使用 --help 查看所有可用的配置项')

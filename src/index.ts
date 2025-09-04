@@ -1,5 +1,4 @@
 export { getFromCache, writeToCache } from './cache'
 export { loadConfig } from './config'
 export { initializeCache, UpstreamSyncer } from './sync'
-export { SyncOptions, WebhookConfig } from './types'
-export { createWebhookServer, WebhookServer } from './webhook'
+export { SyncOptions } from './types'

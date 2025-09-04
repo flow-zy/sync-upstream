@@ -34,31 +34,6 @@ export const DEFAULT_CONFIG: Partial<SyncOptions> = {
     autoSwitchBack: true,
     autoDeleteMergedBranches: false,
   },
-  webhookConfig: {
-    enable: false,
-    port: 3000,
-    path: '/webhook',
-    secret: '',
-    allowedEvents: ['push'],
-    triggerBranch: 'main',
-    supportedPlatforms: ['github'],
-    retryConfig: {
-      maxRetries: 3,
-      initialDelay: 1000,
-      backoffFactor: 2,
-    },
-    securityConfig: {
-      ipWhitelist: [],
-      rateLimit: {
-        maxRequestsPerSecond: 10,
-        statusCode: 429,
-        message: 'Too many requests',
-      },
-    },
-    eventFilterConfig: {
-      rules: [],
-    },
-  },
   cacheConfig: {
     expiryMs: 7 * 24 * 60 * 60 * 1000, // 默认7天
     maxSizeBytes: 5 * 1024 * 1024 * 1024, // 默认5GB

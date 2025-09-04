@@ -49,10 +49,8 @@ sync-upstream 是一款面向企业与开源团队的**上游代码生命周期�
 - **分支策略自动化**：基于规则自动创建和管理分支，支持FEATURE、RELEASE、HOTFIX和DEVELOP四种策略
 
 ### 🚀 高效协作
-- **灰度发布 & 一键回滚**：dry-run → canary → full → revert（已完成，查看 [FEATURES_DETAILED.md](FEATURES_DETAILED.md) 获取详细说明）
 - **Web Dashboard**：实时落后 commit 数、一键审批（即将上线）
 - **CI/CD 集成**：与 GitHub Actions 等工具无缝集成（开发中）
-- **Webhook集成**：支持接收上游仓库的Webhook通知，实现自动触发同步（已完成）
 
 ---
 
@@ -124,15 +122,7 @@ module.exports = {
     autoSwitchBack: true,
     autoDeleteMergedBranches: false
   },
-  // Webhook配置
-  webhookConfig: {
-    enable: true,
-    port: 3000,
-    path: '/webhook',
-    secret: 'your-secure-webhook-secret', // 生产环境中请使用环境变量
-    allowedEvents: ['push', 'pull_request'],
-    triggerBranch: 'main'
-  }
+  
 }
 ```
 保存后执行：
@@ -166,18 +156,9 @@ sync-upstream --config sync.config.js
 | `--version` | `-v` | `boolean` | 无 | 显示版本信息 |
 | `--help` | `-h` | `boolean` | 无 | 显示帮助信息 |
 | `--non-interactive` | `-y` | `boolean` | 无 | 非交互式模式，跳过所有确认提示 |
-| `--gray-release` | `-gr` | `boolean` | 无 | 启用灰度发布模式 |
-| `--full-release` | `-fr` | `boolean` | 无 | 执行全量发布 |
-| `--rollback` | `-ro` | `boolean` | 无 | 执行回滚操作 |
 | `--branch-strategy` | 无 | `<策略>` | `FEATURE` | 分支策略类型 (FEATURE, RELEASE, HOTFIX, DEVELOP) |
 | `--base-branch` | 无 | `<分支>` | `main` | 基础分支，用于创建新分支 |
 | `--branch-pattern` | 无 | `<模式>` | `feature/{name}` | 分支命名模式，支持{name}, {date}, {author}等变量 |
-| `--webhook-enable` | `-we` | `boolean` | 无 | 启用Webhook集成 |
-| `--webhook-port` | `-wp` | `<端口>` | `3000` | Webhook监听端口 |
-| `--webhook-path` | `-wpa` | `<路径>` | `/webhook` | Webhook路径 |
-| `--webhook-secret` | `-ws` | `<密钥>` | `your-secret` | Webhook验证密钥 |
-| `--webhook-events` | `-wev` | `<事件>` | `push,pull_request` | 允许的事件类型列表，多个事件用逗号分隔 |
-| `--webhook-branch` | `-wb` | `<分支>` | `main` | 触发同步的分支 |
 
 ---
 

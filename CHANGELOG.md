@@ -13,7 +13,6 @@
 
 * **cache:** 添加缓存压缩和预热功能 ([d4c0876](https://github.com/flow-zy/sync-upstream/commit/d4c08761f851976e789d4fd596c1cd8f8a86edf9))
 * **cache:** 增加基于内容类型的缓存过期时间和键前缀支持 ([bc14bf3](https://github.com/flow-zy/sync-upstream/commit/bc14bf366234d807239cf7adbca3e5cd781361fb))
-* **webhook:** 增强webhook功能并添加安全配置 ([6b0ef87](https://github.com/flow-zy/sync-upstream/commit/6b0ef87c22d00e292ded9c165bcd0e2c04d89f7e))
 
 ## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-16)
 
@@ -21,37 +20,17 @@
 
 * 新增高级缓存系统并优化性能 ([3a97c01](https://github.com/flow-zy/sync-upstream/commit/3a97c0163292d4403dd0c78f0461ceb217cb87dd))
 
-## [0.2.5](https://github.com/flow-zy/sync-upstream/compare/v0.2.4...v0.2.5) (2025-08-17)
-
-### ✨ Features | 新功能
-
-* **webhook:** 增强Webhook功能，支持多平台签名验证和事件历史记录 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
-* **conflict:** 改进冲突解决机制，实现智能合并算法和差异预览 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
-
-### 🛠 Improvements | 改进
-
-* **webhook:** 优化Webhook请求处理逻辑和错误处理 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
-* **conflict:** 完善冲突解决日志记录和用户交互体验 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
-
-### ♻ Code Refactoring | 代码重构
-
-* **webhook:** 重构Webhook相关代码，提高可维护性 ([#123](https://github.com/flow-zy/sync-upstream/pull/123))
-* **conflict:** 优化冲突检测和解决流程 ([#124](https://github.com/flow-zy/sync-upstream/pull/124))
-
 ## [0.2.4](https://github.com/flow-zy/sync-upstream/compare/v0.2.3...v0.2.4) (2025-08-16)
 
 ### ✨ Features | 新功能
 
 * **config:** 添加对JSON5配置文件格式的支持 ([8f3399b](https://github.com/flow-zy/sync-upstream/commit/8f3399b8ada952f3badaab02185738341cbb575e))
-* **webhook:** 实现Webhook集成功能并添加分支策略支持 ([e7f4076](https://github.com/flow-zy/sync-upstream/commit/e7f40763fd4a534bacbd401d9cabb85cb9f441f9))
 
 ## [0.2.3](https://github.com/flow-zy/sync-upstream/compare/v0.2.1...v0.2.3) (2025-08-15)
 
 ### ✨ Features | 新功能
 
-* **灰度发布:** 实现灰度发布功能及相关文档更新 ([50cadfc](https://github.com/flow-zy/sync-upstream/commit/50cadfcd5fc0218cf3c70aaac1cd04aec7408adb))
-* 添加灰度发布功能支持 ([ded4737](https://github.com/flow-zy/sync-upstream/commit/ded4737a0e8032ff8681cb288b0e0f3a0e82811b))
-* **同步配置:** 添加全量发布、回滚和未知参数处理功能 ([86fabf8](https://github.com/flow-zy/sync-upstream/commit/86fabf85c85fa385778c8f1c74cc8ac87fca1e8a))
+* **同步配置:** 添加未知参数处理功能 ([86fabf8](https://github.com/flow-zy/sync-upstream/commit/86fabf85c85fa385778c8f1c74cc8ac87fca1e8a))
 
 ### 🎫 Chores | 其他更新
 
@@ -68,18 +47,7 @@
 
 ### ♻ Code Refactoring | 代码重构
 
-* 清理未使用的灰度发布相关代码并优化配置 ([5398ea8](https://github.com/flow-zy/sync-upstream/commit/5398ea88299a6335b3f725246ddfb6e772e29634))
-* **gray-release:** 重构灰度发布相关代码并修复类型定义 ([3e2dc2b](https://github.com/flow-zy/sync-upstream/commit/3e2dc2b9ebe82d749ca6907247cf4d9a5925b4e1))
-
-## [0.2.2](https://github.com/flow-zy/sync-upstream/compare/v0.2.1...v0.2.2) (2025-08-15)
-
-### ✨ Features | 新功能
-
-* 添加灰度发布功能支持 ([ded4737](https://github.com/flow-zy/sync-upstream/commit/ded4737a0e8032ff8681cb288b0e0f3a0e82811b))
-
-### 💄 Styles | 风格
-
-* 优化导入顺序并更新package.json元数据 ([f6ee7fa](https://github.com/flow-zy/sync-upstream/commit/f6ee7fa7aa36a81245dafd38dcd612ecbd5ab6e9))
+* 优化配置 ([5398ea8](https://github.com/flow-zy/sync-upstream/commit/5398ea88299a6335b3f725246ddfb6e772e29634))
 
 ## [0.2.1](https://github.com/flow-zy/sync-upstream/compare/v0.2.0...v0.2.1) (2025-08-14)
 

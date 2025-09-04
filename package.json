@@ -68,8 +68,7 @@
     "picocolors": "^1.1.1",
     "picomatch": "^4.0.3",
     "prompts": "^2.4.2",
-    "simple-git": "^3.28.0",
-    "smol-toml": "^1.4.2"
+    "simple-git": "^3.28.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.1.0",

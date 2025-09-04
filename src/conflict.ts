@@ -21,7 +21,8 @@ async function getFileVersion(filePath: string): Promise<string | null> {
     const stats = await fs.stat(filePath)
     // 使用文件修改时间作为临时版本标识
     return stats.mtime.getTime().toString()
-  } catch (error) {
+  }
+  catch (error) {
     console.error(`Failed to get version for file ${filePath}:`, error)
     return null
   }

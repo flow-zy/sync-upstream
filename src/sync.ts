@@ -14,7 +14,6 @@ import simpleGit from 'simple-git'
 import { getFromCache, initializeCache, writeToCache } from './cache'
 import { ConflictResolutionStrategy, ConflictResolver } from './conflict'
 import { FsError, GitError, handleError, SyncProcessError, UserCancelError } from './errors'
-import { GrayReleaseManager } from './grayRelease'
 import { getDirectoryHashes, getFileHash, loadHashes, saveHashes } from './hash'
 import { loadIgnorePatterns, shouldIgnore } from './ignore'
 import { isLargeFile } from './lfs'
@@ -71,13 +70,11 @@ export class UpstreamSyncer {
   private tempResourcesCreated: boolean = false
   private cpuCount: number
   private adaptiveConcurrency: boolean = true
-  private grayReleaseManager: GrayReleaseManager
   private originalBranch: string = ''
   private strategyBranch: string = ''
   private operationTimes: Record<string, { start: number, end?: number }> = {}
 
   constructor(private options: SyncOptions) {
-    this.grayReleaseManager = new GrayReleaseManager(options)
     // 构建 Git 配置选项
     const gitOptions: any = {
       progress: this.handleProgress.bind(this),
@@ -770,15 +767,7 @@ export class UpstreamSyncer {
     const projectRoot = process.cwd()
     const ignorePatterns = await loadIgnorePatterns(projectRoot)
     // 导入shouldIgnore函数
-    const { shouldIgnore } = require('./ignore')
-    // 如果启用了灰度发布
-    if (this.grayReleaseManager.isEnabled()) {
-      this.logStep('执行灰度发布...')
-      await this.grayReleaseManager.executeCanaryRelease()
-      logger.info('灰度发布已完成。如需全量发布，请运行 sync-upstream --full-release')
-      return
-    }
-
+    const { shouldIgnore } = await import('./ignore')
     this.logStep('应用更新到公司仓库...')
 
     try {
@@ -826,10 +815,11 @@ export class UpstreamSyncer {
               // 复制时也应用忽略模式
               // 使用箭头函数确保变量作用域正确
               const copyWithIgnore = async (projectRoot: string, ignorePatterns: string[]) => {
-                await fs.copy(sourcePath, destPath, {
+                // 使用类型断言解决类型冲突
+                await (fs.copy as (src: string, dest: string, options?: any) => Promise<void>)(sourcePath, destPath, {
                   overwrite: this.forceOverwrite, // 遵循全局强制覆盖配置
-                  errorOnExist: false, // 已存在的文件不会报错
-                  filter: (src) => {
+                  recursive: true, // 确保递归复制所有子目录和文件
+                  filter: (src: string) => {
                     const relativePath = path.relative(projectRoot, src)
                     return !shouldIgnore(relativePath, ignorePatterns)
                   },
@@ -1023,24 +1013,6 @@ export class UpstreamSyncer {
     catch (error) {
       logger.warn(`清理临时目录失败: ${error instanceof Error ? error.message : String(error)}`)
     }
-  }
-
-  /**
-   * 执行全量发布
-   */
-  async executeFullRelease(): Promise<void> {
-    this.logStep('执行全量发布...')
-    await this.grayReleaseManager.executeFullRelease()
-    logger.success('全量发布完成')
-  }
-
-  /**
-   * 执行回滚操作
-   */
-  async rollback(): Promise<void> {
-    this.logStep('执行回滚操作...')
-    await this.grayReleaseManager.rollback()
-    logger.success('回滚操作完成')
   }
 
   /**

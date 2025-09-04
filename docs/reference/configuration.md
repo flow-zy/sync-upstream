@@ -198,18 +198,9 @@ sync-upstream 支持通过命令行参数配置所有功能，以下是可用的
 | `--version` | `-v` | `boolean` | 无 | 显示版本信息 |
 | `--help` | `-h` | `boolean` | 无 | 显示帮助信息 |
 | `--non-interactive` | `-y` | `boolean` | `false` | 非交互式模式，跳过所有确认提示 |
-| `--gray-release` | `-gr` | `boolean` | `false` | 启用灰度发布模式 |
-| `--full-release` | `-fr` | `boolean` | `false` | 执行全量发布 |
-| `--rollback` | `-ro` | `boolean` | `false` | 执行回滚操作 |
 | `--branch-strategy` | 无 | `<策略>` | `FEATURE` | 分支策略类型 (FEATURE, RELEASE, HOTFIX, DEVELOP) |
 | `--base-branch` | 无 | `<分支>` | `main` | 基础分支，用于创建新分支 |
 | `--branch-pattern` | 无 | `<模式>` | `feature/{name}` | 分支命名模式，支持{name}, {date}, {author}等变量 |
-| `--webhook-enable` | `-we` | `boolean` | `false` | 启用Webhook集成 |
-| `--webhook-port` | `-wp` | `<端口>` | `3000` | Webhook监听端口 |
-| `--webhook-path` | `-wpa` | `<路径>` | `/webhook` | Webhook路径 |
-| `--webhook-secret` | `-ws` | `<密钥>` | 无 | Webhook验证密钥 |
-| `--webhook-events` | `-wev` | `<事件>` | `push,pull_request` | 允许的事件类型列表，多个事件用逗号分隔 |
-| `--webhook-branch` | `-wb` | `<分支>` | `main` | 触发同步的分支 |
 
 ## 配置示例
 
