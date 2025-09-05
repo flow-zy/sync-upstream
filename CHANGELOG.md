@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.2.8](https://github.com/flow-zy/sync-upstream/compare/v0.2.7...v0.2.8) (2025-09-05)
+
 ## [0.2.7](https://github.com/flow-zy/sync-upstream/compare/v0.2.6...v0.2.7) (2025-08-18)
 
 ### ✨ Features | 新功能
